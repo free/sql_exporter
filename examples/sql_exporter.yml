@@ -1,0 +1,87 @@
+# Global config
+global:
+  # Minimum interval between re-issuing a query: by default (==0) the query is executed on every scrape.
+  min_interval: 0s
+
+# Jobs are similar to jobs in the Prometheus configuration: all metrics will get a `job` label, set to the `job_name`
+# defined here.
+jobs:
+  - job_name: mssql
+
+    # The set of collectors (defined below) to apply to all instances of this job.
+    collectors: [mssql_standard]
+
+    # Similar to the Prometheus configuration, multiple sets of targets may be defined, each with an optional set of
+    # labels to be applied to all metrics.
+    static_configs:
+      - targets:
+          # Defines a target (`dbserver1`) with a driver specific data source name. All metrics collected from this
+          # target will have an instance="dbserver1" label applied to them.
+          'dbserver1': 'sqlserver://prom_user:prom_password@dbserver1'
+          'dbserver2': 'sqlserver://prom_user:prom_password@dbserver2'
+        # All metrics collected from dbserver1 and dbserver2 will have the env="prod" label applied.
+        labels:
+          env: 'prod'
+
+      # A different set of targets with the env="test" label.
+      - targets:
+          'testdb:1434': 'sqlserver://prom_user:prom_password@testdb:1434'
+        labels:
+          env: 'test'
+
+# A collector is a named set of related metrics that are collected together.
+collectors:
+
+  # Standard metrics for MS SQL Server.
+  - collector_name: mssql_standard
+
+    # Similar to global.min_interval, but specific to the collector.
+    min_interval: 0s
+
+    # A metric is a Prometheus metric with name, type, help text and (optional) additional labels paired with exactly
+    # one query to populate the metric labels and values from.
+    #
+    # For simplicity's sake, SQL exporter enforces a 1 to 1 correspondence between metrics and SQL queries.
+    metrics:
+      # The metric name, type and help text, as exported to /metrics.
+      - metric_name: mssql_log_growths
+        # This is a Prometheus counter (monotonically increasing value).
+        type: counter
+        help: 'Total number of times the transaction log for the database has been expanded since last restart'
+        # Optional set of labels for the metric.
+        labels:
+          # The value of the `db` label will be populated from the `db` column of each row. 1 to 1 mapping again.
+          - db
+        # This query returns exactly one value per row, in the `counter` column.
+        value: counter
+        query: |
+          SELECT rtrim(instance_name) AS db, cntr_value AS counter
+          FROM sys.dm_os_performance_counters
+          WHERE counter_name = 'Log Growths' AND instance_name <> '_Total'
+
+      # A different metric, with multiple values produced from each returned row.
+      - metric_name: mssql_io_stall
+        type: counter
+        help: 'Stall time (in milliseconds) per I/O operation, since server start.'
+        labels:
+          # Populated from the `db` column of the result.
+          - db
+          # This query returns multiple values per row (`values` below vs. `value` for the other metric) the values of
+          # the last label are populated from the value column names (e.g. operation="io_stall_read_ms")
+          - operation
+        values:
+          - io_stall_read_ms
+          - io_stall_write_ms
+          - io_stall_queued_read_ms
+          - io_stall_queued_write_ms
+        query: |
+          SELECT
+            cast(DB_Name(a.database_id) as varchar) AS db,
+            sum(io_stall_read_ms) AS io_stall_read_ms,
+            sum(io_stall_write_ms) AS io_stall_write_ms,
+            sum(io_stall_queued_read_ms) AS io_stall_queued_read_ms,
+            sum(io_stall_queued_write_ms) AS io_stall_queued_write_ms
+          FROM
+            sys.dm_io_virtual_file_stats(null, null) a
+          INNER JOIN sys.master_files b ON a.database_id = b.database_id AND a.file_id = b.file_id
+          GROUP BY a.database_id

@@ -1,0 +1,64 @@
+# Global config
+global:
+  # Minimum interval between re-issuing a query: by default (==0) the query is executed on every scrape.
+  # min_interval: 5s
+
+collectors:
+  - collector_name: mssql_log_growths
+    # Same as global.min_interval, but specific to the collector.
+    # min_interval: 5s
+    metrics:
+      - name: mssql_log_growths
+        labels: [database]
+        type: counter
+        help: 'Total number of times the transaction log for the database has been expanded since last restart'
+    queries:
+      - sql: |
+          SELECT rtrim(instance_name) AS db, cntr_value AS counter
+          FROM sys.dm_os_performance_counters
+          WHERE counter_name = 'Log Growths' AND instance_name <> '_Total'
+        metrics: [mssql_log_growths]
+
+  - collector_name: mssql_io_stall
+    metrics:
+      - name: mssql_io_stall
+        labels: [database, operation]
+        type: counter
+        help: 'Stall time (in milliseconds) per I/O operation, since server start.'
+      - name: mssql_io_stall_total
+        labels: [database]
+        type: counter
+        help: 'Total stall time (in milliseconds) since server start.'
+    queries:
+      - query: |
+          SELECT
+            cast(DB_Name(a.database_id) as varchar) AS db,
+            max(io_stall),
+            max(io_stall_read_ms),
+            max(io_stall_write_ms),
+            max(io_stall_queued_read_ms),
+            max(io_stall_queued_write_ms)
+          FROM
+            sys.dm_io_virtual_file_stats(null, null) a
+          INNER JOIN sys.master_files b ON a.database_id = b.database_id AND a.file_id = b.file_id
+          GROUP BY a.database_id
+        output:
+          1: 'mssql_io_stall_total{database="{{db}}"}'
+          2: 'mssql_io_stall{database="{{db}}",operation="read"}'
+          3: 'mssql_io_stall{database="{{db}}",operation="write"}'
+          4: 'mssql_io_stall{database="{{db}}",operation="queued_read"}'
+          5: 'mssql_io_stall{database="{{db}}",operation="queued_write"}'
+
+jobs:
+  - job_name: mssql
+    collectors: [mssql_log_growths, mssql_io_stall]
+    static_configs:
+      - targets:
+          'db1': 'sqlserver://prom_user:prom_password@db1'
+          'db2': 'sqlserver://prom_user:prom_password@db2'
+        labels:
+          env: 'prod'
+      - targets:
+          'testdb:1434': 'sqlserver://prom_user:prom_password@testdb:1434'
+        labels:
+          env: 'test'
