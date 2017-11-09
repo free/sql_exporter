@@ -1,15 +1,13 @@
 package sql_exporter
 
 import (
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	log "github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 // Exporter collects SQL metrics. It implements prometheus.Collector.
 type Exporter struct {
-	jobs   []*Job
-	logger log.Logger
+	jobs []*Job
 }
 
 // NewExporter returns a new SQL Exporter for the provided config.
@@ -19,7 +17,7 @@ func NewExporter(logger log.Logger, configFile string) (*Exporter, error) {
 	}
 
 	// read config
-	cfg, err := Read(configFile)
+	cfg, err := LoadConfig(configFile)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +33,7 @@ func NewExporter(logger log.Logger, configFile string) (*Exporter, error) {
 			continue
 		}
 		if err := job.Init(logger, cfg.Queries); err != nil {
-			level.Warn(logger).Log("msg", "Skipping job. Failed to initialize", "err", err, "job", job.Name)
+			log.Warningf("Skipping job %q. Failed to initialize: %s", job.Name, err)
 			continue
 		}
 		exp.jobs = append(exp.jobs, job)
@@ -56,7 +54,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 				continue
 			}
 			if query.desc == nil {
-				level.Error(e.logger).Log("msg", "Query has no descriptor", "query", query.Name)
+				log.Errorf("Query has no descriptor: %s", query.Name)
 				continue
 			}
 			ch <- query.desc

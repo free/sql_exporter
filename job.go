@@ -18,6 +18,39 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+// Job is a collection of targets with the same collectors applied. It wraps the corresponding JobConfig and a set of
+// Targets.
+type Job struct {
+	config  *JobConfig
+	targets []*Target
+}
+
+func NewJob(config *JobConfig) (*Job, error) {
+	j := Job{
+		config:  config,
+		targets: make([]*Target, 0, 10),
+	}
+
+	for _, sc := range config.StaticConfigs {
+		for tname, dsn := range sc.Targets {
+			constLabels := prometheus.Labels{
+				"job":      config.Name,
+				"instance": tname,
+			}
+			for name, value := range sc.Labels {
+				// Shouldn't happen as there are sanity checks in config, but make sure nonetheless.
+				if _, ok := constLabels[name]; ok {
+					return nil, fmt.Errorf("duplicate label %q in job %q", name, config.Name)
+				}
+				constLabels[name] = value
+			}
+			j.targets = append(j.targets, NewTarget(tname, dsn, constLabels))
+		}
+	}
+
+	return j, nil
+}
+
 var (
 	// MetricNameRE matches any invalid metric name
 	// characters, see github.com/prometheus/common/model.MetricNameRE

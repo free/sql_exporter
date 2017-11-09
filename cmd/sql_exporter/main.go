@@ -7,8 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	log "github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
@@ -26,6 +25,11 @@ func main() {
 		configFile    = flag.String("config.file", os.Getenv("CONFIG"), "SQL Exporter configuration file name.")
 	)
 
+	// Override --alsologtostderr default value.
+	if alsoLogToStderr := flag.Lookup("alsologtostderr"); alsoLogToStderr != nil {
+		alsoLogToStderr.DefValue = "true"
+		alsoLogToStderr.Value.Set("true")
+	}
 	flag.Parse()
 
 	if *showVersion {
@@ -33,32 +37,11 @@ func main() {
 		os.Exit(0)
 	}
 
-	// init logger
-	logger := log.NewJSONLogger(os.Stderr)
-	logger = log.With(logger,
-		"ts", log.DefaultTimestampUTC,
-		"caller", log.DefaultCaller,
-	)
-	// set the allowed log level filter
-	switch strings.ToLower(os.Getenv("LOGLEVEL")) {
-	case "debug":
-		logger = level.NewFilter(logger, level.AllowDebug())
-	case "info":
-		logger = level.NewFilter(logger, level.AllowInfo())
-	case "warn":
-		logger = level.NewFilter(logger, level.AllowWarn())
-	case "error":
-		logger = level.NewFilter(logger, level.AllowError())
-	default:
-		logger = level.NewFilter(logger, level.AllowAll())
-	}
+	log.Infof("Starting SQL exporter %s %s", version.Info(), version.BuildContext())
 
-	logger.Log("msg", "Starting sql_exporter", "version_info", version.Info(), "build_context", version.BuildContext())
-
-	exporter, err := sql_exporter.NewExporter(logger, *configFile)
+	exporter, err := sql_exporter.NewExporter(*configFile)
 	if err != nil {
-		level.Error(logger).Log("msg", "Error starting exporter", "err", err)
-		os.Exit(1)
+		log.Fatalf("Error starting exporter: %s", err)
 	}
 	prometheus.MustRegister(exporter)
 
@@ -76,9 +59,6 @@ func main() {
 		`))
 	})
 
-	level.Info(logger).Log("msg", "Listening", "listenAddress", *listenAddress)
-	if err := http.ListenAndServe(*listenAddress, nil); err != nil {
-		level.Error(logger).Log("msg", "Error starting HTTP server:", "err", err)
-		os.Exit(1)
-	}
+	log.Infof("Listening on %s", *listenAddress)
+	log.Fatal(http.ListenAndServe(*listenAddress, nil))
 }

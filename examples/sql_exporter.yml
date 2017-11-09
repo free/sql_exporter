@@ -1,14 +1,14 @@
-# Global config
+# Global defaults.
 global:
   # Minimum interval between re-issuing a query: by default (==0) the query is executed on every scrape.
   min_interval: 0s
 
-# Jobs are similar to jobs in the Prometheus configuration: all metrics will get a `job` label, set to the `job_name`
-# defined here.
+# Jobs are equivalent to jobs in the Prometheus configuration: they group similar targets sith similar metrics together. 
 jobs:
+  # All metrics from all targets get a `job` label, set to this value.
   - job_name: mssql
 
-    # The set of collectors (defined below) to apply to all instances of this job.
+    # The set of collectors (defined below) applied to all targets in this job.
     collectors: [mssql_standard]
 
     # Similar to the Prometheus configuration, multiple sets of targets may be defined, each with an optional set of
@@ -29,46 +29,55 @@ jobs:
         labels:
           env: 'test'
 
-# A collector is a named set of related metrics that are collected together.
+# A collector is a named set of related metrics that are collected together. It can be applied to one or more jobs (i.e.
+# executed on all targets within that job), possibly along with other collectors.
 collectors:
 
   # Standard metrics for MS SQL Server.
   - collector_name: mssql_standard
 
-    # Similar to global.min_interval, but specific to the collector.
+    # Similar to global.min_interval, but specific to the queries defined by this collector.
     min_interval: 0s
 
-    # A metric is a Prometheus metric with name, type, help text and (optional) additional labels paired with exactly
+    # A metric is a Prometheus metric with name, type, help text and (optional) additional labels, paired with exactly
     # one query to populate the metric labels and values from.
     #
-    # For simplicity's sake, SQL exporter enforces a 1 to 1 correspondence between metrics and SQL queries.
+    # The result columns conceptually fall into two categories:
+    #  * zero or more key columns: their values will be directly mapped to labels of the same name;
+    #  * one or more value columns:
+    #     * if exactly one value column, its name is ignored and its value becomes the metric value
+    #     * with multiple value columns, a `value_label` must be defined; the column name will populate this label and
+    #       the column value will popilate the metric value.
     metrics:
       # The metric name, type and help text, as exported to /metrics.
       - metric_name: mssql_log_growths
         # This is a Prometheus counter (monotonically increasing value).
         type: counter
         help: 'Total number of times the transaction log for the database has been expanded since last restart'
-        # Optional set of labels for the metric.
-        labels:
-          # The value of the `db` label will be populated from the `db` column of each row. 1 to 1 mapping again.
+        # Optional set of labels derived from key columns.
+        key_labels:
+          # Populated from the `db` column of each row.
           - db
         # This query returns exactly one value per row, in the `counter` column.
-        value: counter
+        values: [counter]
         query: |
           SELECT rtrim(instance_name) AS db, cntr_value AS counter
           FROM sys.dm_os_performance_counters
           WHERE counter_name = 'Log Growths' AND instance_name <> '_Total'
 
-      # A different metric, with multiple values produced from each returned row.
+      # A different metric, with multiple values produced from each result row.
       - metric_name: mssql_io_stall
         type: counter
         help: 'Stall time (in milliseconds) per I/O operation, since server start.'
-        labels:
+        key_labels:
           # Populated from the `db` column of the result.
           - db
-          # This query returns multiple values per row (`values` below vs. `value` for the other metric) the values of
-          # the last label are populated from the value column names (e.g. operation="io_stall_read_ms")
-          - operation
+        # Label populated with the value column name, configured via `values` (e.g. `operation="io_stall_read_ms"`).
+        #
+        # Required when multiple value columns are configured.
+        value_label: operation
+        # Multiple value columns: their name is recorded in the label defined by `attrubute_label` (e.g. 
+        # `operation="io_stall_read_ms"`).
         values:
           - io_stall_read_ms
           - io_stall_write_ms
