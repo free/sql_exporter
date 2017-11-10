@@ -1,6 +1,101 @@
 {
 	"comment": "",
 	"ignore": "test",
-	"package": [],
+	"package": [
+		{
+			"path": "appengine/cloudsql",
+			"revision": ""
+		},
+		{
+			"checksumSHA1": "w0tKAADAfc6jNZR/sSqjSXsw3Hg=",
+			"path": "github.com/denisenkom/go-mssqldb",
+			"revision": "88555645b640cc621e32f8693d7586a1aa1575f4",
+			"revisionTime": "2017-10-06T17:24:03Z"
+		},
+		{
+			"checksumSHA1": "os4jdoOUjr86qvOwri8Ut1rXDrg=",
+			"path": "github.com/go-sql-driver/mysql",
+			"revision": "fade21009797158e7b79e04c340118a9220c6f9e",
+			"revisionTime": "2017-10-17T18:16:16Z"
+		},
+		{
+			"checksumSHA1": "1XzGTIZoKYvNFmErD630zK1xxDc=",
+			"path": "github.com/kshvakov/clickhouse",
+			"revision": "95e4a6a9dd85f7b58c2db7d0dc820fd937bf7abf",
+			"revisionTime": "2017-11-07T09:00:43Z"
+		},
+		{
+			"checksumSHA1": "rNjgsSrtZWHxdSsvABV9vVl4nvM=",
+			"path": "github.com/kshvakov/clickhouse/lib/binary",
+			"revision": "95e4a6a9dd85f7b58c2db7d0dc820fd937bf7abf",
+			"revisionTime": "2017-11-07T09:00:43Z"
+		},
+		{
+			"checksumSHA1": "MZW/ngRStY8CnDEMxQ4gx25hlbk=",
+			"path": "github.com/kshvakov/clickhouse/lib/column",
+			"revision": "95e4a6a9dd85f7b58c2db7d0dc820fd937bf7abf",
+			"revisionTime": "2017-11-07T09:00:43Z"
+		},
+		{
+			"checksumSHA1": "V4xKIzUklXcsuRk1rrNvbrWHPxc=",
+			"path": "github.com/kshvakov/clickhouse/lib/data",
+			"revision": "95e4a6a9dd85f7b58c2db7d0dc820fd937bf7abf",
+			"revisionTime": "2017-11-07T09:00:43Z"
+		},
+		{
+			"checksumSHA1": "ufET0wbq25geHjZiCY3tu4FlLeU=",
+			"path": "github.com/kshvakov/clickhouse/lib/protocol",
+			"revision": "95e4a6a9dd85f7b58c2db7d0dc820fd937bf7abf",
+			"revisionTime": "2017-11-07T09:00:43Z"
+		},
+		{
+			"checksumSHA1": "ZQpL0gf/qVoJsHs2rLHQhDLhdcg=",
+			"path": "github.com/kshvakov/clickhouse/lib/types",
+			"revision": "95e4a6a9dd85f7b58c2db7d0dc820fd937bf7abf",
+			"revisionTime": "2017-11-07T09:00:43Z"
+		},
+		{
+			"checksumSHA1": "yxaizsc0g9UElhfIEl0i3FvL3b0=",
+			"path": "github.com/kshvakov/clickhouse/lib/writebuffer",
+			"revision": "95e4a6a9dd85f7b58c2db7d0dc820fd937bf7abf",
+			"revisionTime": "2017-11-07T09:00:43Z"
+		},
+		{
+			"checksumSHA1": "3HVfwgLpCDH8JX211UWdrSi/GU4=",
+			"path": "github.com/lib/pq",
+			"revision": "b609790bd85edf8e9ab7e0f8912750a786177bcf",
+			"revisionTime": "2017-10-22T19:20:43Z"
+		},
+		{
+			"checksumSHA1": "AU3fA8Sm33Vj9PBoRPSeYfxLRuE=",
+			"path": "github.com/lib/pq/oid",
+			"revision": "b609790bd85edf8e9ab7e0f8912750a786177bcf",
+			"revisionTime": "2017-10-22T19:20:43Z"
+		},
+		{
+			"checksumSHA1": "rJab1YdNhQooDiBWNnt7TLWPyBU=",
+			"path": "github.com/pkg/errors",
+			"revision": "f15c970de5b76fac0b59abb32d62c17cc7bed265",
+			"revisionTime": "2017-10-18T19:55:50Z"
+		},
+		{
+			"checksumSHA1": "MCeXr2RNeiG1XG6V+er1OR0qyeo=",
+			"path": "golang.org/x/crypto/md4",
+			"revision": "6a293f2d4b14b8e6d3f0539e383f6d0d30fce3fd",
+			"revisionTime": "2017-09-25T11:22:06Z"
+		},
+		{
+			"checksumSHA1": "GtamqiJoL7PGHsN454AoffBFMa8=",
+			"path": "golang.org/x/net/context",
+			"revision": "a337091b0525af65de94df2eb7e98bd9962dcbe2",
+			"revisionTime": "2016-10-09T20:39:03Z"
+		},
+		{
+			"checksumSHA1": "RDJpJQwkF012L6m/2BJizyOksNw=",
+			"path": "gopkg.in/yaml.v2",
+			"revision": "eb3733d160e74a9c7e442f435eb3bea458e1d19f",
+			"revisionTime": "2017-08-12T16:00:11Z"
+		}
+	],
 	"rootPath": "github.com/alin-sinpalean/sql_exporter"
 }

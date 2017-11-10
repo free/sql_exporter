@@ -3,14 +3,8 @@ package sql_exporter
 import (
 	"fmt"
 	"io/ioutil"
-	"net/url"
-	"os"
-	"sync"
-	"time"
+	"strings"
 
-	"github.com/go-kit/kit/log"
-	"github.com/jmoiron/sqlx"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"gopkg.in/yaml.v2"
 )
@@ -82,7 +76,7 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // GlobalConfig contains globally applicable defaults.
 type GlobalConfig struct {
-	MinInterval common.Duration `yaml:"min_interval,omitempty"` // minimum interval between query executions
+	MinInterval model.Duration `yaml:"min_interval,omitempty"` // minimum interval between query executions, default is 0
 
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline" json:"-"`
@@ -90,7 +84,10 @@ type GlobalConfig struct {
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface for GlobalConfig.
 func (g *GlobalConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	if err := unmarshal(g); err != nil {
+	g.MinInterval = model.Duration(0)
+
+	type plain GlobalConfig
+	if err := unmarshal((*plain)(g)); err != nil {
 		return err
 	}
 
@@ -248,14 +245,14 @@ func (c *CollectorConfig) UnmarshalYAML(unmarshal func(interface{}) error) error
 // MetricConfig defines a Prometheus metric, the SQL query to populate it and the mapping of columns to metric
 // keys/values.
 type MetricConfig struct {
-	Name       string               `yaml:"name"`                  // the Prometheus metric name
-	Type       prometheus.ValueType `yaml:"type"`                  // the Prometheus metric type
-	Help       string               `yaml:"help"`                  // the Prometheus metric help text
-	KeyLabels  []string             `yaml:"key_labels,omitempty"`  // expose these columns as labels
-	ValueLabel string               `yaml:"value_label,omitempty"` // with multiple value columns, map their names under this label
-	Values     []string             `yaml:"values"`                // expose each of these columns as a value, keyed by column name
-	Query      string               `yaml:"query,omitempty"`       // a literal query
-	QueryRef   string               `yaml:"query_ref,omitempty"`   // references a query in the query map
+	Name       string     `yaml:"name"`                  // the Prometheus metric name
+	Type       MetricType `yaml:"type"`                  // the Prometheus metric type
+	Help       string     `yaml:"help"`                  // the Prometheus metric help text
+	KeyLabels  []string   `yaml:"key_labels,omitempty"`  // expose these columns as labels
+	ValueLabel string     `yaml:"value_label,omitempty"` // with multiple value columns, map their names under this label
+	Values     []string   `yaml:"values"`                // expose each of these columns as a value, keyed by column name
+	Query      string     `yaml:"query,omitempty"`       // a literal query
+	QueryRef   string     `yaml:"query_ref,omitempty"`   // references a query in the query map
 
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline" json:"-"`
@@ -310,18 +307,28 @@ func (m *MetricConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return checkOverflow(m.XXX, "metric")
 }
 
+type MetricType int
+
+const (
+	MetricTypeCounter = 1
+	MetricTypeGauge   = 2
+
+	StringCounter = "counter"
+	StringGauge   = "gauge"
+)
+
 // UnmarshalYAML implements the yaml.Unmarshaler interface for ValueType.
-func (t *prometheus.ValueType) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (t *MetricType) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var temp string
 	if err := unmarshal(temp); err != nil {
 		return err
 	}
 
-	switch temp {
-	case "counter":
-		t = prometheus.CounterValue
-	case "gauge":
-		t = prometheus.GaugeValue
+	switch strings.ToLower(temp) {
+	case StringCounter:
+		t = MetricTypeCounter
+	case StringGauge:
+		t = MetricTypeGauge
 	default:
 		return fmt.Errorf("unsupported metric type: %s", temp)
 	}
@@ -355,31 +362,31 @@ func checkOverflow(m map[string]interface{}, ctx string) error {
 //
 
 // Job defines a set of collectors to be executed on a set of targets.
-type Job struct {
-	log    log.Logger
-	conns  []*connection
-	config JobConfig
-}
-
-type connection struct {
-	conn     *sqlx.DB
-	url      *url.URL
-	driver   string
-	host     string
-	database string
-	user     string
-}
-
-// Query is an SQL query that is executed on a connection
-type Query struct {
-	sync.Mutex
-	log      log.Logger
-	desc     *prometheus.Desc
-	metrics  map[*connection][]prometheus.Metric
-	Name     string   `yaml:"name"`      // the prometheus metric name
-	Help     string   `yaml:"help"`      // the prometheus metric help text
-	Labels   []string `yaml:"labels"`    // expose these columns as labels per gauge
-	Values   []string `yaml:"values"`    // expose each of these as an gauge
-	Query    string   `yaml:"query"`     // a literal query
-	QueryRef string   `yaml:"query_ref"` // references an query in the query map
-}
+//type Job struct {
+//	log    log.Logger
+//	conns  []*connection
+//	config JobConfig
+//}
+//
+//type connection struct {
+//	conn     *sqlx.DB
+//	url      *url.URL
+//	driver   string
+//	host     string
+//	database string
+//	user     string
+//}
+//
+//// Query is an SQL query that is executed on a connection
+//type Query struct {
+//	sync.Mutex
+//	log      log.Logger
+//	desc     *prometheus.Desc
+//	metrics  map[*connection][]prometheus.Metric
+//	Name     string   `yaml:"name"`      // the prometheus metric name
+//	Help     string   `yaml:"help"`      // the prometheus metric help text
+//	Labels   []string `yaml:"labels"`    // expose these columns as labels per gauge
+//	Values   []string `yaml:"values"`    // expose each of these as an gauge
+//	Query    string   `yaml:"query"`     // a literal query
+//	QueryRef string   `yaml:"query_ref"` // references an query in the query map
+//}

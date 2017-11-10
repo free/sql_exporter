@@ -22,13 +22,18 @@ func main() {
 		showVersion   = flag.Bool("version", false, "Print version information.")
 		listenAddress = flag.String("web.listen-address", ":9237", "Address to listen on for web interface and telemetry.")
 		metricsPath   = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
-		configFile    = flag.String("config.file", os.Getenv("CONFIG"), "SQL Exporter configuration file name.")
+		configFile    = flag.String("config.file", "sql_exporter.yml", "SQL Exporter configuration file name.")
 	)
 
 	// Override --alsologtostderr default value.
 	if alsoLogToStderr := flag.Lookup("alsologtostderr"); alsoLogToStderr != nil {
 		alsoLogToStderr.DefValue = "true"
 		alsoLogToStderr.Value.Set("true")
+	}
+	// Override the config.file default with the CONFIG environment variable, if set. If the flag is explicitly set, it
+	// will override both.
+	if envConfigFile := os.Getenv("CONFIG"); envConfigFile != "" {
+		*configFile = envConfigFile
 	}
 	flag.Parse()
 
