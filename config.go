@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"strings"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"gopkg.in/yaml.v2"
 )
@@ -15,13 +16,11 @@ func LoadConfig(path string) (*Config, error) {
 
 	buf, err := ioutil.ReadFile(path)
 	if err != nil {
-		return f, err
+		return &f, err
 	}
 
-	if err := yaml.Unmarshal(buf, &f); err != nil {
-		return f, err
-	}
-	return &f, nil
+	err = yaml.Unmarshal(buf, &f)
+	return &f, err
 }
 
 //
@@ -50,24 +49,25 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 
 	// Populate collector references for all jobs
-	var colls map[string]*CollectorConfig
+	colls := make(map[string]*CollectorConfig)
 	for _, coll := range c.Collectors {
 		// Set the min interval to the global default if not explicitly set.
 		if coll.MinInterval < 0 {
 			coll.MinInterval = c.Globals.MinInterval
 		}
-		if _, ok := colls[coll.Name]; ok {
+		if _, found := colls[coll.Name]; found {
 			return fmt.Errorf("duplicate collector name: %s", coll.Name)
 		}
 		colls[coll.Name] = coll
 	}
 	for _, j := range c.Jobs {
-		j.collectors = make([]*CollectorConfig, len(j.Collectors))
+		j.collectors = make([]*CollectorConfig, 0, len(j.Collectors))
 		for _, cname := range j.Collectors {
-			if coll, ok := colls[cname]; !ok {
+			coll, found := colls[cname]
+			if !found {
 				return fmt.Errorf("unknown collector %q referenced by job %q", cname, j.Name)
 			}
-			append(j.collectors, coll)
+			j.collectors = append(j.collectors, coll)
 		}
 	}
 
@@ -112,7 +112,7 @@ type JobConfig struct {
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface for JobConfig.
 func (j *JobConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	type plain StaticConfig
+	type plain JobConfig
 	if err := unmarshal((*plain)(j)); err != nil {
 		return err
 	}
@@ -126,8 +126,8 @@ func (j *JobConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if len(j.Collectors) == 0 {
 		return fmt.Errorf("no collectors defined for job %q", j.Name)
 	}
-	for i, ci := range m.Collectors {
-		for j, cj := range m.KeyLabels[i+1:] {
+	for i, ci := range j.Collectors {
+		for _, cj := range j.Collectors[i+1:] {
 			if ci == cj {
 				return fmt.Errorf("duplicate collector reference %q by job %q", ci, j.Name)
 			}
@@ -143,7 +143,7 @@ func (j *JobConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // checkLabelCollisions checks for label collisions between StaticConfig labels and Metric labels.
 func (j *JobConfig) checkLabelCollisions() error {
-	var sclabels map[string]interface{}
+	sclabels := make(map[string]interface{})
 	for _, s := range j.StaticConfigs {
 		for _, l := range s.Labels {
 			sclabels[l] = nil
@@ -180,7 +180,8 @@ func (s *StaticConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 
 	// Check for empty/duplicate target names/data source names
-	var tnames, dsns map[string]interface{}
+	tnames := make(map[string]interface{})
+	dsns := make(map[string]interface{})
 	for tname, dsn := range s.Targets {
 		if tname == "" {
 			return fmt.Errorf("empty target name in static config %+v", s)
@@ -196,16 +197,6 @@ func (s *StaticConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 			return fmt.Errorf("duplicate data source name %q in static_config %+v", tname, s)
 		}
 		dsns[dsn] = nil
-	}
-
-	// Check for duplicate labels
-	for i, li := range s.Labels {
-		checkLabel(li, "static_config")
-		for j, lj := range s.Labels[i+1:] {
-			if li == lj {
-				return fmt.Errorf("duplicate label %q in static_config %+v", li, s)
-			}
-		}
 	}
 
 	return checkOverflow(s.XXX, "static_config")
@@ -245,14 +236,16 @@ func (c *CollectorConfig) UnmarshalYAML(unmarshal func(interface{}) error) error
 // MetricConfig defines a Prometheus metric, the SQL query to populate it and the mapping of columns to metric
 // keys/values.
 type MetricConfig struct {
-	Name       string     `yaml:"name"`                  // the Prometheus metric name
-	Type       MetricType `yaml:"type"`                  // the Prometheus metric type
-	Help       string     `yaml:"help"`                  // the Prometheus metric help text
-	KeyLabels  []string   `yaml:"key_labels,omitempty"`  // expose these columns as labels
-	ValueLabel string     `yaml:"value_label,omitempty"` // with multiple value columns, map their names under this label
-	Values     []string   `yaml:"values"`                // expose each of these columns as a value, keyed by column name
-	Query      string     `yaml:"query,omitempty"`       // a literal query
-	QueryRef   string     `yaml:"query_ref,omitempty"`   // references a query in the query map
+	Name       string   `yaml:"metric_name"`           // the Prometheus metric name
+	TypeString string   `yaml:"type"`                  // the Prometheus metric type
+	Help       string   `yaml:"help"`                  // the Prometheus metric help text
+	KeyLabels  []string `yaml:"key_labels,omitempty"`  // expose these columns as labels
+	ValueLabel string   `yaml:"value_label,omitempty"` // with multiple value columns, map their names under this label
+	Values     []string `yaml:"values"`                // expose each of these columns as a value, keyed by column name
+	Query      string   `yaml:"query,omitempty"`       // a literal query
+	QueryRef   string   `yaml:"query_ref,omitempty"`   // references a query in the query map
+
+	valueType prometheus.ValueType
 
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline" json:"-"`
@@ -269,7 +262,7 @@ func (m *MetricConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if m.Name == "" {
 		return fmt.Errorf("missing name for metric %+v", m)
 	}
-	if m.Type == 0 {
+	if m.TypeString == "" {
 		return fmt.Errorf("missing type for metric %q", m.Name)
 	}
 	if m.Help == "" {
@@ -279,15 +272,24 @@ func (m *MetricConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return fmt.Errorf("missing query for metric %q", m.Name)
 	}
 
+	switch strings.ToLower(m.TypeString) {
+	case "counter":
+		m.valueType = prometheus.CounterValue
+	case "gauge":
+		m.valueType = prometheus.GaugeValue
+	default:
+		return fmt.Errorf("unsupported metric type: %s", m.TypeString)
+	}
+
 	// Check for duplicate key labels
 	for i, li := range m.KeyLabels {
 		checkLabel(li, "metric", m.Name)
-		for j, lj := range m.KeyLabels[i+1:] {
+		for _, lj := range m.KeyLabels[i+1:] {
 			if li == lj {
 				return fmt.Errorf("duplicate key label %q for metric %q", li, m.Name)
 			}
 		}
-		if ValueLabel == li {
+		if m.ValueLabel == li {
 			return fmt.Errorf("duplicate label %q (defined in both key_labels and value_label) for metric %q", li, m.Name)
 		}
 	}
@@ -307,34 +309,6 @@ func (m *MetricConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return checkOverflow(m.XXX, "metric")
 }
 
-type MetricType int
-
-const (
-	MetricTypeCounter = 1
-	MetricTypeGauge   = 2
-
-	StringCounter = "counter"
-	StringGauge   = "gauge"
-)
-
-// UnmarshalYAML implements the yaml.Unmarshaler interface for ValueType.
-func (t *MetricType) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var temp string
-	if err := unmarshal(temp); err != nil {
-		return err
-	}
-
-	switch strings.ToLower(temp) {
-	case StringCounter:
-		t = MetricTypeCounter
-	case StringGauge:
-		t = MetricTypeGauge
-	default:
-		return fmt.Errorf("unsupported metric type: %s", temp)
-	}
-	return nil
-}
-
 func checkLabel(label string, ctx ...string) error {
 	if label == "" {
 		return fmt.Errorf("empty label defined in %s", strings.Join(ctx, " "))
@@ -342,6 +316,7 @@ func checkLabel(label string, ctx ...string) error {
 	if label == "job" || label == "instance" {
 		return fmt.Errorf("reserved label %q redefined in %s", label, strings.Join(ctx, " "))
 	}
+	return nil
 }
 
 func checkOverflow(m map[string]interface{}, ctx string) error {
@@ -354,39 +329,3 @@ func checkOverflow(m map[string]interface{}, ctx string) error {
 	}
 	return nil
 }
-
-//
-//
-//
-//
-//
-
-// Job defines a set of collectors to be executed on a set of targets.
-//type Job struct {
-//	log    log.Logger
-//	conns  []*connection
-//	config JobConfig
-//}
-//
-//type connection struct {
-//	conn     *sqlx.DB
-//	url      *url.URL
-//	driver   string
-//	host     string
-//	database string
-//	user     string
-//}
-//
-//// Query is an SQL query that is executed on a connection
-//type Query struct {
-//	sync.Mutex
-//	log      log.Logger
-//	desc     *prometheus.Desc
-//	metrics  map[*connection][]prometheus.Metric
-//	Name     string   `yaml:"name"`      // the prometheus metric name
-//	Help     string   `yaml:"help"`      // the prometheus metric help text
-//	Labels   []string `yaml:"labels"`    // expose these columns as labels per gauge
-//	Values   []string `yaml:"values"`    // expose each of these as an gauge
-//	Query    string   `yaml:"query"`     // a literal query
-//	QueryRef string   `yaml:"query_ref"` // references an query in the query map
-//}

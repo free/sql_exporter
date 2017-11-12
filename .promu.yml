@@ -3,6 +3,9 @@ go:
 repository:
     path: github.com/alin-sinpalean/sql_exporter
 build:
+    binaries:
+        - name: sql_exporter
+          path: ./cmd/sql_exporter
     flags: -a -tags netgo
     ldflags: |
       -X {{repoPath}}/vendor/github.com/prometheus/common/version.Version={{.Version}}

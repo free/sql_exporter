@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strings"
 
+	"github.com/alin-sinpalean/sql_exporter"
 	log "github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -44,13 +44,14 @@ func main() {
 
 	log.Infof("Starting SQL exporter %s %s", version.Info(), version.BuildContext())
 
-	exporter, err := sql_exporter.NewExporter(*configFile)
+	exporter, err := sql_exporter.NewExporter(*configFile, prometheus.DefaultGatherer)
 	if err != nil {
 		log.Fatalf("Error starting exporter: %s", err)
 	}
-	prometheus.MustRegister(exporter)
+	// Replace the default gatherer with the exporter, which merges SQL metrics with those from the default gatherer.
+	prometheus.DefaultGatherer = exporter
 
-	// setup and start webserver
+	// Setup and start webserver.
 	http.Handle(*metricsPath, promhttp.Handler())
 	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { http.Error(w, "OK", http.StatusOK) })
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
