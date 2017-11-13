@@ -48,11 +48,14 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error starting exporter: %s", err)
 	}
-	// Replace the default gatherer with the exporter, which merges SQL metrics with those from the default gatherer.
-	prometheus.DefaultGatherer = exporter
 
 	// Setup and start webserver.
-	http.Handle(*metricsPath, promhttp.Handler())
+	opts := promhttp.HandlerOpts{
+		ErrorLog:      LogFunc(log.Error),
+		ErrorHandling: promhttp.ContinueOnError,
+	}
+	// Expose metrics from our own exporter, which merges SQL target metrics with those from the default gatherer.
+	http.Handle(*metricsPath, promhttp.HandlerFor(exporter, opts))
 	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { http.Error(w, "OK", http.StatusOK) })
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<html>
@@ -67,4 +70,13 @@ func main() {
 
 	log.Infof("Listening on %s", *listenAddress)
 	log.Fatal(http.ListenAndServe(*listenAddress, nil))
+}
+
+// LogFunc is an adapter to allow the use of any function as a promhttp.Logger. If f is a function, LogFunc(f) is a
+// promhttp.Logger that calls f.
+type LogFunc func(args ...interface{})
+
+// Println implements promhttp.Logger.
+func (log LogFunc) Println(args ...interface{}) {
+	log(args)
 }

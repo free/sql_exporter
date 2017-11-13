@@ -1,16 +1,19 @@
 package sql_exporter
 
 import (
+	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/pkg/errors"
-	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 )
 
-// Collector is a self-contained group of SQL queries and metrics to collect from a specific database. It implements
-// prometheus.Collector.
+// Collector is a self-contained group of SQL queries and metrics to collect from a specific database. It is
+// conceptually similar to a prometheus.Collector, but doesn't implement it because it requires a context to run in.
 type Collector interface {
-	prometheus.Collector
+	// Collect is the equivalent of prometheus.Collector.Collect() but takes a context to run in and a database to run on.
+	Collect(context.Context, *sql.DB, chan<- MetricValue)
 }
 
 // collector implements Collector. It wraps a collection of queries, metrics and the database to collect them from.
@@ -18,13 +21,11 @@ type collector struct {
 	config  *CollectorConfig
 	queries []*Query
 	metrics []*Metric
-
-	conn *sql.DB
 }
 
 // NewCollector returns a new Collector with the given configuration and database. The metrics it creates will all have
-// the provided const labels applied and will be registered with the provided registry.
-func NewCollector(cc *CollectorConfig, constLabels prometheus.Labels, registry prometheus.Registerer) (Collector, error) {
+// the provided const labels applied.
+func NewCollector(cc *CollectorConfig, constLabels []*dto.LabelPair) (Collector, error) {
 	metrics := make([]*Metric, 0, len(cc.Metrics))
 	queries := make([]*Query, 0, len(cc.Metrics))
 
@@ -50,30 +51,17 @@ func NewCollector(cc *CollectorConfig, constLabels prometheus.Labels, registry p
 	return &c, nil
 }
 
-// Describe implements prometheus.Collector.
-func (c *collector) Describe(ch chan<- *prometheus.Desc) {
-	for _, m := range c.metrics {
-		ch <- m.Desc
-	}
-}
-
-var (
-	errorDesc = prometheus.NewDesc(
-		"error",
-		"error",
-		[]string{},
-		map[string]string{},
-	)
-)
-
-// Collect implements prometheus.Collector.
-func (c *collector) Collect(ch chan<- prometheus.Metric) {
+// Collect implements Collector.
+func (c *collector) Collect(ctx context.Context, conn *sql.DB, ch chan<- MetricValue) {
 	for _, q := range c.queries {
-		// TODO: add timeout
-		rows, err := q.Run()
+		if ctx.Err() != nil {
+			ch <- NewInvalidMetric(ctx.Err())
+			return
+		}
+		rows, err := q.Run(ctx, conn)
 		if err != nil {
 			// TODO: increment an error counter
-			ch <- prometheus.NewInvalidMetric(errorDesc, err)
+			ch <- NewInvalidMetric(err)
 			continue
 		}
 		defer rows.Close()
@@ -81,8 +69,7 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 		for rows.Next() {
 			row, err := q.ScanRow(rows)
 			if err != nil {
-				ch <- prometheus.NewInvalidMetric(errorDesc,
-					errors.Wrapf(err, "error while scanning row in collector %q", c.config.Name))
+				ch <- NewInvalidMetric(errors.Wrapf(err, "error while scanning row in collector %q", c.config.Name))
 				continue
 			}
 			for _, m := range q.metrics {
@@ -91,7 +78,12 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 		}
 		rows.Close()
 		if err = rows.Err(); err != nil {
-			ch <- prometheus.NewInvalidMetric(errorDesc, err)
+			ch <- NewInvalidMetric(err)
 		}
 	}
+}
+
+// String implements fmt.Stringer.
+func (c *collector) String() string {
+	return fmt.Sprintf("collector %q", c.config.Name)
 }

@@ -50,7 +50,7 @@ func OpenConnection(ctx context.Context, dataSourceName string) (*sql.DB, error)
 func OpenConnectionWithDriver(ctx context.Context, driverName string, dataSourceName string) (*sql.DB, error) {
 	// Don't bother if the context is already closed.
 	if ctx.Err() != nil {
-		return ctx.Err()
+		return nil, ctx.Err()
 	}
 
 	conn, err := sql.Open(driverName, dataSourceName)

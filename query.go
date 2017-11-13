@@ -4,19 +4,20 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	log "github.com/golang/glog"
 )
 
 // Query wraps a sql.Stmt and all the metrics populated from it. It helps extract keys and values from result rows.
 type Query struct {
-	metrics []*Metric
+	queryString string
+	metrics     []*Metric
 	// columnTypes maps column names to the column type expected by metrics: key (string) or value (float64).
 	columnTypes columnTypeMap
-	queryString string
 
-	stmt *sql.Stmt
 	conn *sql.DB
+	stmt *sql.Stmt
 }
 
 type columnType int
@@ -28,7 +29,7 @@ const (
 )
 
 // NewQuery returns a new Query.
-func NewQuery(queryString string, conn *sql.DB, metrics ...*Metric) (*Query, error) {
+func NewQuery(queryString string, metrics ...*Metric) (*Query, error) {
 	columnTypes := make(columnTypeMap)
 
 	for _, m := range metrics {
@@ -45,9 +46,9 @@ func NewQuery(queryString string, conn *sql.DB, metrics ...*Metric) (*Query, err
 	}
 
 	q := Query{
+		queryString: queryString,
 		metrics:     metrics,
 		columnTypes: columnTypes,
-		queryString: queryString,
 	}
 	return &q, nil
 }
@@ -65,15 +66,20 @@ func setColumnType(columnName string, ctype columnType, columnTypes columnTypeMa
 	return nil
 }
 
-// Run executes the wrapped prepared statement.
+// Run executes the query on the provided database, in the provided context.
 func (q *Query) Run(ctx context.Context, conn *sql.DB) (*sql.Rows, error) {
+	if q.conn != nil && q.conn != conn {
+		panic("Expecting to always run on the same database handle")
+	}
+
 	if q.stmt == nil {
-		var err error
-		q.stmt, err = q.conn.PrepareContext(ctx, q.queryString)
+		stmt, err := conn.PrepareContext(ctx, q.queryString)
 		if err != nil {
 			log.Warningf("Failed to prepare query %s", q.queryString)
 			return nil, err
 		}
+		q.conn = conn
+		q.stmt = stmt
 	}
 	return q.stmt.QueryContext(ctx)
 }
@@ -86,26 +92,38 @@ func (q *Query) ScanRow(rows *sql.Rows) (map[string]interface{}, error) {
 		return nil, err
 	}
 
-	// Create the array to scan the row into, with strings for keys and float64s for values...
+	// Create the array to scan the row into, with strings for keys and float64s for values.
 	dest := make([]interface{}, 0, len(columns))
+	have := make(map[string]bool, len(q.columnTypes))
 	for _, column := range columns {
 		switch q.columnTypes[column] {
 		case columnTypeKey:
 			dest = append(dest, new(string))
+			have[column] = true
 		case columnTypeValue:
 			dest = append(dest, new(float64))
+			have[column] = true
 		default:
 			log.V(1).Infof("Extra column %q returned by query %s", column, q.stmt)
 			dest = append(dest, new(interface{}))
 		}
 	}
-	// ...scan the row content into dest...
+	// Not all requested columns could be mapped, fail.
+	if len(have) != len(q.columnTypes) {
+		missing := make([]string, len(q.columnTypes)-len(have))
+		for c, _ := range q.columnTypes {
+			missing = append(missing, c)
+		}
+		return nil, fmt.Errorf("column(s) [%s] missing from query result: %s", strings.Join(missing, "], ["), q.queryString)
+	}
+
+	// Scan the row content into dest.
 	err = rows.Scan(dest...)
 	if err != nil {
 		return nil, err
 	}
 
-	// ...and pick all values we're interested in into a map.
+	// Pick all values we're interested in into a map.
 	result := make(map[string]interface{}, len(q.columnTypes))
 	for i, column := range columns {
 		switch q.columnTypes[column] {

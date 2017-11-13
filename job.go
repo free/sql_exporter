@@ -6,12 +6,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// Job is a collection of targets with the same collectors applied. It wraps the corresponding JobConfig and a set of
-// Targets.
+// Job is a collection of targets with the same collectors applied.
 type Job interface {
 	Targets() []Target
 }
 
+// job implements Job. It wraps the corresponding JobConfig and a set of Targets.
 type job struct {
 	config  *JobConfig
 	targets []Target
