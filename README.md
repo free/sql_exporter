@@ -1,2 +1,2 @@
 # sql_exporter
-A database agnostic configurable SQL exporter for Prometheus
+Database agnostic SQL exporter for Prometheus
