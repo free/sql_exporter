@@ -11,8 +11,8 @@ import (
 
 // Query wraps a sql.Stmt and all the metrics populated from it. It helps extract keys and values from result rows.
 type Query struct {
-	queryString string
-	metrics     []*Metric
+	config         *QueryConfig
+	metricFamilies []*MetricFamily
 	// columnTypes maps column names to the column type expected by metrics: key (string) or value (float64).
 	columnTypes columnTypeMap
 
@@ -28,17 +28,17 @@ const (
 	columnTypeValue = 2
 )
 
-// NewQuery returns a new Query.
-func NewQuery(queryString string, metrics ...*Metric) (*Query, error) {
+// NewQuery returns a new Query that will populate the given metric families.
+func NewQuery(qc *QueryConfig, metricFamilies ...*MetricFamily) (*Query, error) {
 	columnTypes := make(columnTypeMap)
 
-	for _, m := range metrics {
-		for _, kcol := range m.config.KeyLabels {
+	for _, mf := range metricFamilies {
+		for _, kcol := range mf.config.KeyLabels {
 			if err := setColumnType(kcol, columnTypeKey, columnTypes); err != nil {
 				return nil, err
 			}
 		}
-		for _, vcol := range m.config.Values {
+		for _, vcol := range mf.config.Values {
 			if err := setColumnType(vcol, columnTypeValue, columnTypes); err != nil {
 				return nil, err
 			}
@@ -46,9 +46,9 @@ func NewQuery(queryString string, metrics ...*Metric) (*Query, error) {
 	}
 
 	q := Query{
-		queryString: queryString,
-		metrics:     metrics,
-		columnTypes: columnTypes,
+		config:         qc,
+		metricFamilies: metricFamilies,
+		columnTypes:    columnTypes,
 	}
 	return &q, nil
 }
@@ -73,9 +73,9 @@ func (q *Query) Run(ctx context.Context, conn *sql.DB) (*sql.Rows, error) {
 	}
 
 	if q.stmt == nil {
-		stmt, err := conn.PrepareContext(ctx, q.queryString)
+		stmt, err := conn.PrepareContext(ctx, q.config.Query)
 		if err != nil {
-			log.Warningf("Failed to prepare query %s", q.queryString)
+			log.Errorf("Failed to prepare query %q: %s", q.config.Name, err)
 			return nil, err
 		}
 		q.conn = conn
@@ -85,14 +85,14 @@ func (q *Query) Run(ctx context.Context, conn *sql.DB) (*sql.Rows, error) {
 }
 
 // ScanRow scans the current row into a map of column name to value, with string values for key columns and float64
-// values for value columns
+// values for value columns.
 func (q *Query) ScanRow(rows *sql.Rows) (map[string]interface{}, error) {
 	columns, err := rows.Columns()
 	if err != nil {
 		return nil, err
 	}
 
-	// Create the array to scan the row into, with strings for keys and float64s for values.
+	// Create the slice to scan the row into, with strings for keys and float64s for values.
 	dest := make([]interface{}, 0, len(columns))
 	have := make(map[string]bool, len(q.columnTypes))
 	for _, column := range columns {
@@ -104,7 +104,7 @@ func (q *Query) ScanRow(rows *sql.Rows) (map[string]interface{}, error) {
 			dest = append(dest, new(float64))
 			have[column] = true
 		default:
-			log.V(1).Infof("Extra column %q returned by query %s", column, q.stmt)
+			log.V(1).Infof("Extra column %q returned by query %q", column, q.config.Name)
 			dest = append(dest, new(interface{}))
 		}
 	}
@@ -114,7 +114,7 @@ func (q *Query) ScanRow(rows *sql.Rows) (map[string]interface{}, error) {
 		for c, _ := range q.columnTypes {
 			missing = append(missing, c)
 		}
-		return nil, fmt.Errorf("column(s) [%s] missing from query result: %s", strings.Join(missing, "], ["), q.queryString)
+		return nil, fmt.Errorf("column(s) [%s] missing from query %q result", strings.Join(missing, "], ["), q.config.Name)
 	}
 
 	// Scan the row content into dest.

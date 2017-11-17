@@ -55,7 +55,7 @@ func OpenConnectionWithDriver(ctx context.Context, driverName string, dataSource
 
 	conn, err := sql.Open(driverName, dataSourceName)
 	if err != nil {
-		return conn, errors.Wrap(err, fmt.Sprintf("driver %s cannot open database %s", driverName, dataSourceName))
+		return conn, errors.Wrapf(err, "driver %s cannot open database %s", driverName, dataSourceName)
 	}
 
 	// If the context has timed out or has been canceled, terminate early.
@@ -64,9 +64,6 @@ func OpenConnectionWithDriver(ctx context.Context, driverName string, dataSource
 		return nil, err
 	}
 
-	if err := conn.PingContext(ctx); err != nil {
-		log.Errorf("Database %s successfully opened by driver %s but ping failed.", dataSourceName, driverName)
-	}
 	// Set it up so we put as little extra load on the DB as possible.
 	conn.SetMaxIdleConns(1)
 	conn.SetMaxOpenConns(1)

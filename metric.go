@@ -5,19 +5,20 @@ import (
 	"sort"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 )
 
-// Metric wraps a prometheus.Desc plus information on how to populate its labels and value from a sql.Rows.
-type Metric struct {
+// MetricFamily describes a metric (name, labes, const labels) and how to populate its labels and values from sql.Rows.
+type MetricFamily struct {
 	config      *MetricConfig
 	labels      []string
 	constLabels []*dto.LabelPair
 }
 
-// NewMetric returns a new Metric with the given instance name, data source name, collectors and constant labels.
-func NewMetric(mc *MetricConfig, constLabels []*dto.LabelPair) (*Metric, error) {
+// NewMetricFamily creates a new MetricFamily with the given metric config and const labels (e.g. job and instance).
+func NewMetricFamily(mc *MetricConfig, constLabels []*dto.LabelPair) (*MetricFamily, error) {
 	if len(mc.Values) == 0 {
 		return nil, fmt.Errorf("no value column for metric %q", mc.Name)
 	}
@@ -31,68 +32,68 @@ func NewMetric(mc *MetricConfig, constLabels []*dto.LabelPair) (*Metric, error) 
 		labels = append(labels, mc.ValueLabel)
 	}
 
-	m := Metric{
+	return &MetricFamily{
 		config:      mc,
 		labels:      labels,
 		constLabels: constLabels,
-	}
-	return &m, nil
+	}, nil
 }
 
-func (m Metric) Collect(row map[string]interface{}, ch chan<- MetricValue) {
-	labelValues := make([]string, len(m.labels))
-	for i, label := range m.config.KeyLabels {
+// Collect is the equivalent of prometheus.Collector.Collect() but takes a Query output map to populate values from.
+func (mf MetricFamily) Collect(row map[string]interface{}, ch chan<- Metric) {
+	labelValues := make([]string, len(mf.labels))
+	for i, label := range mf.config.KeyLabels {
 		labelValues[i] = row[label].(string)
 	}
-	for _, v := range m.config.Values {
-		if m.config.ValueLabel != "" {
+	for _, v := range mf.config.Values {
+		if mf.config.ValueLabel != "" {
 			labelValues[len(labelValues)-1] = v
 		}
 		value := row[v].(float64)
-		ch <- NewMetricValue(&m, value, labelValues...)
+		ch <- NewMetric(&mf, value, labelValues...)
 	}
 }
 
-func (m Metric) Name() string {
-	return m.config.Name
+func (mf MetricFamily) Name() string {
+	return mf.config.Name
 }
 
-func (m Metric) Help() string {
-	return m.config.Help
+func (mf MetricFamily) Help() string {
+	return mf.config.Help
 }
 
-// NewMetricValue returns a metric with one fixed value that cannot be changed.
+// NewMetric returns a metric with one fixed value that cannot be changed.
 //
-// NewMetricValue panics if the length of labelValues is not consistent with desc.labels.
-func NewMetricValue(desc *Metric, value float64, labelValues ...string) MetricValue {
-	if len(desc.labels) != len(labelValues) {
-		panic(fmt.Sprintf("Metric %q: expected %d labels, got %d", desc.Name(), len(desc.labels), len(labelValues)))
+// NewMetric panics if the length of labelValues is not consistent with family.labels.
+func NewMetric(family *MetricFamily, value float64, labelValues ...string) Metric {
+	if len(family.labels) != len(labelValues) {
+		panic(fmt.Sprintf("Metric %q: expected %d labels, got %d", family.Name(), len(family.labels), len(labelValues)))
 	}
 	return &constMetric{
-		desc:       desc,
+		family:     family,
 		val:        value,
-		labelPairs: makeLabelPairs(desc, labelValues),
+		labelPairs: makeLabelPairs(family, labelValues),
 	}
 }
 
-type MetricValue interface {
-	Desc() *Metric
+type Metric interface {
+	Family() *MetricFamily
 	Write(out *dto.Metric) error
 }
 
 type constMetric struct {
-	desc       *Metric
+	family     *MetricFamily
 	val        float64
 	labelPairs []*dto.LabelPair
 }
 
-func (m *constMetric) Desc() *Metric {
-	return m.desc
+func (m *constMetric) Family() *MetricFamily {
+	return m.family
 }
 
 func (m *constMetric) Write(out *dto.Metric) error {
 	out.Label = m.labelPairs
-	switch t := m.desc.config.valueType; t {
+	switch t := m.family.config.valueType; t {
 	case prometheus.CounterValue:
 		out.Counter = &dto.Counter{Value: proto.Float64(m.val)}
 	case prometheus.GaugeValue:
@@ -103,24 +104,24 @@ func (m *constMetric) Write(out *dto.Metric) error {
 	return nil
 }
 
-func makeLabelPairs(desc *Metric, labelValues []string) []*dto.LabelPair {
-	totalLen := len(desc.labels) + len(desc.constLabels)
+func makeLabelPairs(family *MetricFamily, labelValues []string) []*dto.LabelPair {
+	totalLen := len(family.labels) + len(family.constLabels)
 	if totalLen == 0 {
 		// Super fast path.
 		return nil
 	}
-	if len(desc.labels) == 0 {
+	if len(family.labels) == 0 {
 		// Moderately fast path.
-		return desc.constLabels
+		return family.constLabels
 	}
 	labelPairs := make([]*dto.LabelPair, 0, totalLen)
-	for i, label := range desc.labels {
+	for i, label := range family.labels {
 		labelPairs = append(labelPairs, &dto.LabelPair{
 			Name:  proto.String(label),
 			Value: proto.String(labelValues[i]),
 		})
 	}
-	labelPairs = append(labelPairs, desc.constLabels...)
+	labelPairs = append(labelPairs, family.constLabels...)
 	sort.Sort(prometheus.LabelPairSorter(labelPairs))
 	return labelPairs
 }
@@ -130,10 +131,10 @@ type invalidMetric struct {
 }
 
 // NewInvalidMetric returns a metric whose Write method always returns the provided error.
-func NewInvalidMetric(err error) MetricValue {
-	return invalidMetric{err}
+func NewInvalidMetric(context string, err error) Metric {
+	return invalidMetric{errors.Wrap(err, context)}
 }
 
-func (m invalidMetric) Desc() *Metric { return &Metric{} }
+func (m invalidMetric) Family() *MetricFamily { return &MetricFamily{} }
 
 func (m invalidMetric) Write(*dto.Metric) error { return m.err }

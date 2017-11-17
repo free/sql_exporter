@@ -29,7 +29,7 @@ func LoadConfig(path string) (*Config, error) {
 
 // Config is a collection of jobs and collectors.
 type Config struct {
-	Globals    GlobalConfig       `yaml:"global,omitempty"`
+	Globals    GlobalConfig       `yaml:"global"`
 	Jobs       []*JobConfig       `yaml:"jobs"`
 	Collectors []*CollectorConfig `yaml:"collectors"`
 
@@ -74,9 +74,14 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return checkOverflow(c.XXX, "config")
 }
 
+// YAML marshals the config into YAML format.
+func (c *Config) YAML() ([]byte, error) {
+	return yaml.Marshal(c)
+}
+
 // GlobalConfig contains globally applicable defaults.
 type GlobalConfig struct {
-	MinInterval model.Duration `yaml:"min_interval,omitempty"` // minimum interval between query executions, default is 0
+	MinInterval model.Duration `yaml:"min_interval"` // minimum interval between query executions, default is 0
 
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline" json:"-"`
@@ -202,6 +207,17 @@ func (s *StaticConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return checkOverflow(s.XXX, "static_config")
 }
 
+func (s *StaticConfig) MarshalYAML() (interface{}, error) {
+	result := StaticConfig{
+		Targets: make(map[string]string, len(s.Targets)),
+		Labels:  s.Labels,
+	}
+	for tname, _ := range s.Targets {
+		result.Targets[tname] = "<secret>"
+	}
+	return result, nil
+}
+
 //
 // Collectors
 //
@@ -211,6 +227,7 @@ type CollectorConfig struct {
 	Name        string          `yaml:"collector_name"`         // name of this collector
 	MinInterval model.Duration  `yaml:"min_interval,omitempty"` // minimum interval between query executions
 	Metrics     []*MetricConfig `yaml:"metrics"`                // metrics/queries defined by this collector
+	Queries     []*QueryConfig  `yaml:"queries,omitempty"`      // named queries defined by this collector
 
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline" json:"-"`
@@ -230,6 +247,28 @@ func (c *CollectorConfig) UnmarshalYAML(unmarshal func(interface{}) error) error
 		return fmt.Errorf("no metrics defined for collector %q", c.Name)
 	}
 
+	// Set metric.query for all metrics: resolve query references (if any) and generate QueryConfigs for literal queries.
+	queries := make(map[string]*QueryConfig, len(c.Queries))
+	for _, query := range c.Queries {
+		queries[query.Name] = query
+	}
+	for _, metric := range c.Metrics {
+		if metric.QueryRef != "" {
+			query, found := queries[metric.QueryRef]
+			if !found {
+				return fmt.Errorf("unresolved query_ref %q in metric %q of collector %q", metric.QueryRef, metric.Name, c.Name)
+			}
+			metric.query = query
+			query.metrics = append(query.metrics, metric)
+		} else {
+			// For literal queries generate a QueryConfig with a name based off collector and metric name.
+			metric.query = &QueryConfig{
+				Name:  fmt.Sprintf("%s.%s", c.Name, metric.Name),
+				Query: metric.Query,
+			}
+		}
+	}
+
 	return checkOverflow(c.XXX, "collector")
 }
 
@@ -245,7 +284,8 @@ type MetricConfig struct {
 	Query      string   `yaml:"query,omitempty"`       // a literal query
 	QueryRef   string   `yaml:"query_ref,omitempty"`   // references a query in the query map
 
-	valueType prometheus.ValueType
+	valueType prometheus.ValueType // TypeString converted to prometheus.ValueType
+	query     *QueryConfig         // QueryConfig resolved from QueryRef or generated from Query
 
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline" json:"-"`
@@ -268,8 +308,8 @@ func (m *MetricConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if m.Help == "" {
 		return fmt.Errorf("missing help for metric %q", m.Name)
 	}
-	if m.Query == "" {
-		return fmt.Errorf("missing query for metric %q", m.Name)
+	if (m.Query == "") == (m.QueryRef == "") {
+		return fmt.Errorf("exactly one of query and query_ref should be specified for metric %q", m.Name)
 	}
 
 	switch strings.ToLower(m.TypeString) {
@@ -307,6 +347,37 @@ func (m *MetricConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 
 	return checkOverflow(m.XXX, "metric")
+}
+
+// QueryConfig defines a named query, to be referenced by one or multiple metrics.
+type QueryConfig struct {
+	Name  string `yaml:"query_name"` // the query name, to be referenced via `query_ref`
+	Query string `yaml:"query"`      // the named query
+
+	metrics []*MetricConfig // metrics referencing this query
+
+	// Catches all undefined fields and must be empty after parsing.
+	XXX map[string]interface{} `yaml:",inline" json:"-"`
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface for QueryConfig.
+func (q *QueryConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type plain QueryConfig
+	if err := unmarshal((*plain)(q)); err != nil {
+		return err
+	}
+
+	// Check required fields
+	if q.Name == "" {
+		return fmt.Errorf("missing name for query %+v", q)
+	}
+	if q.Query == "" {
+		return fmt.Errorf("missing query literal for query %q", q.Name)
+	}
+
+	q.metrics = make([]*MetricConfig, 0, 2)
+
+	return checkOverflow(q.XXX, "metric")
 }
 
 func checkLabel(label string, ctx ...string) error {

@@ -53,7 +53,7 @@ collectors:
       - metric_name: mssql_log_growths
         # This is a Prometheus counter (monotonically increasing value).
         type: counter
-        help: 'Total number of times the transaction log for the database has been expanded since last restart'
+        help: 'Total number of times the transaction log has been expanded since last restart, per database.'
         # Optional set of labels derived from key columns.
         key_labels:
           # Populated from the `db` column of each row.
@@ -68,7 +68,7 @@ collectors:
       # A different metric, with multiple values produced from each result row.
       - metric_name: mssql_io_stall
         type: counter
-        help: 'Stall time (in milliseconds) per I/O operation, since server start.'
+        help: 'Stall time (in milliseconds) per database and I/O operation, since server start.'
         key_labels:
           # Populated from the `db` column of the result.
           - db
@@ -83,6 +83,22 @@ collectors:
           - io_stall_write_ms
           - io_stall_queued_read_ms
           - io_stall_queued_write_ms
+        query_ref: mssql_io_stall
+      # Uses same named query (referenced through query_ref) as mssql_io_stall.
+      - metric_name: mssql_io_stall_total
+        type: counter
+        help: 'Total stall time (in milliseconds) per database, since server start.'
+        key_labels:
+          # Populated from the `db` column of the result.
+          - db
+        # Only one value, populated from the `io_stall` column.
+        values:
+          - io_stall
+        query_ref: mssql_io_stall
+
+    # Named queries, referenced by one or more metrics, through query_ref.
+    queries:
+      - query_name: mssql_io_stall
         query: |
           SELECT
             cast(DB_Name(a.database_id) as varchar) AS db,

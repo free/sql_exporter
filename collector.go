@@ -9,36 +9,44 @@ import (
 	dto "github.com/prometheus/client_model/go"
 )
 
-// Collector is a self-contained group of SQL queries and metrics to collect from a specific database. It is
-// conceptually similar to a prometheus.Collector, but doesn't implement it because it requires a context to run in.
+// Collector is a self-contained group of SQL queries and metric families to collect from a specific database. It is
+// conceptually similar to a prometheus.Collector.
 type Collector interface {
 	// Collect is the equivalent of prometheus.Collector.Collect() but takes a context to run in and a database to run on.
-	Collect(context.Context, *sql.DB, chan<- MetricValue)
+	Collect(context.Context, *sql.DB, chan<- Metric)
 }
 
 // collector implements Collector. It wraps a collection of queries, metrics and the database to collect them from.
 type collector struct {
 	config  *CollectorConfig
 	queries []*Query
-	metrics []*Metric
 }
 
 // NewCollector returns a new Collector with the given configuration and database. The metrics it creates will all have
 // the provided const labels applied.
 func NewCollector(cc *CollectorConfig, constLabels []*dto.LabelPair) (Collector, error) {
-	metrics := make([]*Metric, 0, len(cc.Metrics))
-	queries := make([]*Query, 0, len(cc.Metrics))
+	// Maps each query to the list of metric families it populates.
+	queryMFs := make(map[*QueryConfig][]*MetricFamily, len(cc.Metrics))
 
+	// Instantiate metric families.
 	for _, mc := range cc.Metrics {
-		m, err := NewMetric(mc, constLabels)
+		mf, err := NewMetricFamily(mc, constLabels)
 		if err != nil {
 			return nil, errors.Wrapf(err, "error in metric %q defined by collector %q", mc.Name, cc.Name)
 		}
-		metrics = append(metrics, m)
+		mfs, found := queryMFs[mc.query]
+		if !found {
+			mfs = make([]*MetricFamily, 0, 2)
+		}
+		queryMFs[mc.query] = append(mfs, mf)
+	}
 
-		q, err := NewQuery(mc.Query, m)
+	// Instantiate queries.
+	queries := make([]*Query, 0, len(cc.Metrics))
+	for qc, mfs := range queryMFs {
+		q, err := NewQuery(qc, mfs...)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error in query defined by collector %q: %s", cc.Name, mc.Query)
+			return nil, errors.Wrapf(err, "error in query %q defined by collector %q", qc.Name, cc.Name)
 		}
 		queries = append(queries, q)
 	}
@@ -46,22 +54,21 @@ func NewCollector(cc *CollectorConfig, constLabels []*dto.LabelPair) (Collector,
 	c := collector{
 		config:  cc,
 		queries: queries,
-		metrics: metrics,
 	}
 	return &c, nil
 }
 
 // Collect implements Collector.
-func (c *collector) Collect(ctx context.Context, conn *sql.DB, ch chan<- MetricValue) {
+func (c *collector) Collect(ctx context.Context, conn *sql.DB, ch chan<- Metric) {
 	for _, q := range c.queries {
 		if ctx.Err() != nil {
-			ch <- NewInvalidMetric(ctx.Err())
+			ch <- NewInvalidMetric(c.String(), ctx.Err())
 			return
 		}
 		rows, err := q.Run(ctx, conn)
 		if err != nil {
 			// TODO: increment an error counter
-			ch <- NewInvalidMetric(err)
+			ch <- NewInvalidMetric(c.String(), err)
 			continue
 		}
 		defer rows.Close()
@@ -69,16 +76,16 @@ func (c *collector) Collect(ctx context.Context, conn *sql.DB, ch chan<- MetricV
 		for rows.Next() {
 			row, err := q.ScanRow(rows)
 			if err != nil {
-				ch <- NewInvalidMetric(errors.Wrapf(err, "error while scanning row in collector %q", c.config.Name))
+				ch <- NewInvalidMetric(fmt.Sprintf("error scanning row in collector %q", c.config.Name), err)
 				continue
 			}
-			for _, m := range q.metrics {
-				m.Collect(row, ch)
+			for _, mf := range q.metricFamilies {
+				mf.Collect(row, ch)
 			}
 		}
 		rows.Close()
 		if err = rows.Err(); err != nil {
-			ch <- NewInvalidMetric(err)
+			ch <- NewInvalidMetric(c.String(), err)
 		}
 	}
 }

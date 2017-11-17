@@ -31,7 +31,7 @@ func main() {
 		alsoLogToStderr.Value.Set("true")
 	}
 	// Override the config.file default with the CONFIG environment variable, if set. If the flag is explicitly set, it
-	// will override both.
+	// will end up overriding either.
 	if envConfigFile := os.Getenv("CONFIG"); envConfigFile != "" {
 		*configFile = envConfigFile
 	}
@@ -54,19 +54,11 @@ func main() {
 		ErrorLog:      LogFunc(log.Error),
 		ErrorHandling: promhttp.ContinueOnError,
 	}
-	// Expose metrics from our own exporter, which merges SQL target metrics with those from the default gatherer.
+	// Expose metrics from our own Exporter, which merges SQL target metrics with those from the default gatherer.
 	http.Handle(*metricsPath, promhttp.HandlerFor(exporter, opts))
 	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { http.Error(w, "OK", http.StatusOK) })
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`<html>
-		<head><title>SQL Exporter</title></head>
-		<body>
-		<h1>SQL Exporter</h1>
-		<p><a href="` + *metricsPath + `">Metrics</a></p>
-		</body>
-		</html>
-		`))
-	})
+	http.HandleFunc("/", HomeHandlerFunc(*metricsPath))
+	http.HandleFunc("/config", ConfigHandlerFunc(*metricsPath, exporter))
 
 	log.Infof("Listening on %s", *listenAddress)
 	log.Fatal(http.ListenAndServe(*listenAddress, nil))

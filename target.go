@@ -47,8 +47,8 @@ type target struct {
 	dsn                string
 	collectors         []Collector
 	constLabels        prometheus.Labels
-	upDesc             *Metric
-	scrapeDurationDesc *Metric
+	upDesc             *MetricFamily
+	scrapeDurationDesc *MetricFamily
 
 	conn *sql.DB
 }
@@ -73,11 +73,11 @@ func NewTarget(name, dsn string, ccs []*CollectorConfig, constLabels prometheus.
 		collectors = append(collectors, c)
 	}
 
-	upDesc, err := NewMetric(&upMetricConfig, constLabelPairs)
+	upDesc, err := NewMetricFamily(&upMetricConfig, constLabelPairs)
 	if err != nil {
 		return nil, err
 	}
-	scrapeDurationDesc, err := NewMetric(&scrapeDurationConfig, constLabelPairs)
+	scrapeDurationDesc, err := NewMetricFamily(&scrapeDurationConfig, constLabelPairs)
 	if err != nil {
 		return nil, err
 	}
@@ -94,28 +94,37 @@ func NewTarget(name, dsn string, ccs []*CollectorConfig, constLabels prometheus.
 
 func (t *target) Gather(ctx context.Context) ([]*dto.MetricFamily, error) {
 	var (
-		metricChan  = make(chan MetricValue, capMetricChan)
+		metricChan  = make(chan Metric, capMetricChan)
 		errs        prometheus.MultiError
 		targetUp    = true
 		scrapeStart = time.Now()
 	)
 
 	if t.conn == nil {
+		// Try creating a DB handle. It won't necessarily open an actual connection, only a driver handle.
 		conn, err := OpenConnection(ctx, t.dsn)
 		if err != nil {
+			log.Errorf("Possible permanent error for target %q: %s", t.name, err)
 			errs = append(errs, err)
 			targetUp = false
 		} else {
 			t.conn = conn
 		}
 	}
-	if targetUp && ctx.Err() != nil {
+	// If we have a handle and the context Check whether the connection is up.
+	if t.conn != nil && ctx.Err() != nil {
+		if err := t.conn.PingContext(ctx); err != nil {
+			targetUp = false
+		}
+	}
+	if ctx.Err() != nil {
+		// Report target down because we timed out or got canceled before scraping.
 		errs = append(errs, ctx.Err())
-		// Target not up because we timed out or got canceled before scraping it.
 		targetUp = false
 	}
 
 	var wg sync.WaitGroup
+	// Don't bother with the collectors if target is down.
 	if targetUp {
 		wg.Add(len(t.collectors))
 		for _, c := range t.collectors {
@@ -127,17 +136,13 @@ func (t *target) Gather(ctx context.Context) ([]*dto.MetricFamily, error) {
 		}
 	}
 
-	// Wait for all collectors (if any) to complete, export our automatically generated metrics, then close the channel.
+	// Wait for all collectors (if any) to complete, generate automatic metrics, then close the channel.
 	go func() {
 		wg.Wait()
 		// Export an "up" metric for the target.
-		targetUpValue := 1.0
-		if !targetUp {
-			targetUpValue = 0.0
-		}
-		metricChan <- NewMetricValue(t.upDesc, targetUpValue)
+		metricChan <- NewMetric(t.upDesc, boolToFloat64(targetUp))
 		// And a scrape duration metric
-		metricChan <- NewMetricValue(t.scrapeDurationDesc, float64(time.Since(scrapeStart)))
+		metricChan <- NewMetric(t.scrapeDurationDesc, float64(time.Since(scrapeStart)))
 		close(metricChan)
 	}()
 
@@ -148,36 +153,36 @@ func (t *target) Gather(ctx context.Context) ([]*dto.MetricFamily, error) {
 	}()
 
 	// Gather.
-	metricFamiliesByName := make(map[string]*dto.MetricFamily, 10)
+	dtoMetricFamilies := make(map[string]*dto.MetricFamily, 10)
 	for metric := range metricChan {
-		desc := metric.Desc()
+		metricFamily := metric.Family()
 		dtoMetric := &dto.Metric{}
 		if err := metric.Write(dtoMetric); err != nil {
-			log.Errorf("Error collecting metric %v: %s", desc, err)
+			errs = append(errs, err)
 			continue
 		}
-		metricFamily, ok := metricFamiliesByName[desc.Name()]
+		dtoMetricFamily, ok := dtoMetricFamilies[metricFamily.Name()]
 		if !ok {
-			metricFamily = &dto.MetricFamily{}
-			metricFamily.Name = proto.String(desc.Name())
-			metricFamily.Help = proto.String(desc.Help())
+			dtoMetricFamily = &dto.MetricFamily{}
+			dtoMetricFamily.Name = proto.String(metricFamily.Name())
+			dtoMetricFamily.Help = proto.String(metricFamily.Help())
 			switch {
 			case dtoMetric.Gauge != nil:
-				metricFamily.Type = dto.MetricType_GAUGE.Enum()
+				dtoMetricFamily.Type = dto.MetricType_GAUGE.Enum()
 			case dtoMetric.Counter != nil:
-				metricFamily.Type = dto.MetricType_COUNTER.Enum()
+				dtoMetricFamily.Type = dto.MetricType_COUNTER.Enum()
 			default:
-				log.Errorf("Don't know how to handle metric %v", dtoMetric)
+				errs = append(errs, fmt.Errorf("don't know how to handle metric %v", dtoMetric))
 				continue
 			}
-			metricFamiliesByName[desc.Name()] = metricFamily
+			dtoMetricFamilies[metricFamily.Name()] = dtoMetricFamily
 		}
-		metricFamily.Metric = append(metricFamily.Metric, dtoMetric)
+		dtoMetricFamily.Metric = append(dtoMetricFamily.Metric, dtoMetric)
 	}
 
-	// Don't sort metric families, prometheus.Gatherers will do that for us when merging target(s) and process metrics.
-	result := make([]*dto.MetricFamily, 0, len(metricFamiliesByName))
-	for _, mf := range metricFamiliesByName {
+	// No need to sort metric families, prometheus.Gatherers will do that for us when merging.
+	result := make([]*dto.MetricFamily, 0, len(dtoMetricFamilies))
+	for _, mf := range dtoMetricFamilies {
 		result = append(result, mf)
 	}
 	return result, errs
@@ -186,4 +191,12 @@ func (t *target) Gather(ctx context.Context) ([]*dto.MetricFamily, error) {
 // String implements fmt.Stringer.
 func (t *target) String() string {
 	return fmt.Sprintf("target %q", t.name)
+}
+
+// boolToFloat64 converts a boolean flag to a float64 value (0.0 or 1.0).
+func boolToFloat64(value bool) float64 {
+	if value {
+		return 1.0
+	}
+	return 0.0
 }
