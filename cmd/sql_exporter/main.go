@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/alin-sinpalean/sql_exporter"
+	"github.com/free/sql_exporter"
 	log "github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
