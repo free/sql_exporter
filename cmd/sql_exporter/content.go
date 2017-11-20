@@ -93,7 +93,7 @@ func HomeHandlerFunc(metricsPath string) func(http.ResponseWriter, *http.Request
 	}
 }
 
-// HomeHandlerFunc is the HTTP handler for the `/config` page. It outputs the configuration marshaled in YAML format.
+// ConfigHandlerFunc is the HTTP handler for the `/config` page. It outputs the configuration marshaled in YAML format.
 func ConfigHandlerFunc(metricsPath string, exporter sql_exporter.Exporter) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		config, err := exporter.Config().YAML()
@@ -109,8 +109,8 @@ func ConfigHandlerFunc(metricsPath string, exporter sql_exporter.Exporter) func(
 	}
 }
 
-// HomeHandlerFunc is an error handler that other handlers defer to in case of error. It is important to not have
-// written anything to w before defering to the error handle, or the 500 status code won't be set.
+// HandleError is an error handler that other handlers defer to in case of error. It is important to not have written
+// anything to w before calling HandleError(), or the 500 status code won't be set (and the content might be mixed up).
 func HandleError(err error, metricsPath string, w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusInternalServerError)
 	errorTemplate.Execute(w, &tdata{
