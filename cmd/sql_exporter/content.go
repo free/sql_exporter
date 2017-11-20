@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	docsUrl   = "https://github.com/free/sql_exporter"
+	docsUrl   = "https://github.com/free/sql_exporter#readme"
 	templates = `
     {{ define "page" -}}
       <html>
@@ -83,6 +83,7 @@ func pageTemplate(name string) *template.Template {
 	return template.Must(template.Must(allTemplates.Clone()).Parse(pageTemplate))
 }
 
+// HomeHandlerFunc is the HTTP handler for the home page (`/`).
 func HomeHandlerFunc(metricsPath string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		homeTemplate.Execute(w, &tdata{
@@ -92,11 +93,12 @@ func HomeHandlerFunc(metricsPath string) func(http.ResponseWriter, *http.Request
 	}
 }
 
+// HomeHandlerFunc is the HTTP handler for the `/config` page. It outputs the configuration marshaled in YAML format.
 func ConfigHandlerFunc(metricsPath string, exporter sql_exporter.Exporter) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		config, err := exporter.Config().YAML()
 		if err != nil {
-			HandleError(err, metricsPath, w, r)
+			handleError(err, metricsPath, w, r)
 			return
 		}
 		configTemplate.Execute(w, &tdata{
@@ -107,6 +109,8 @@ func ConfigHandlerFunc(metricsPath string, exporter sql_exporter.Exporter) func(
 	}
 }
 
+// HomeHandlerFunc is an error handler that other handlers defer to in case of error. It is important to not have
+// written anything to w before defering to the error handle, or the 500 status code won't be set.
 func HandleError(err error, metricsPath string, w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusInternalServerError)
 	errorTemplate.Execute(w, &tdata{

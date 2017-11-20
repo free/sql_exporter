@@ -169,7 +169,8 @@ func (j *JobConfig) checkLabelCollisions() error {
 		for _, m := range c.Metrics {
 			for _, l := range m.KeyLabels {
 				if _, ok := sclabels[l]; ok {
-					fmt.Errorf("label collision in job %q: label %q is defined both by a static_config and by metric %q of collector %q",
+					return fmt.Errorf(
+						"label collision in job %q: label %q is defined both by a static_config and by metric %q of collector %q",
 						j.Name, l, m.Name, c.Name)
 				}
 			}
@@ -217,12 +218,12 @@ func (s *StaticConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return checkOverflow(s.XXX, "static_config")
 }
 
+// MarshalYAML implements the yaml.Marshaler interface for StaticConfig. It replaces DSNs with placeholders as they
+// may contain credentials.
 func (s *StaticConfig) MarshalYAML() (interface{}, error) {
-	result := StaticConfig{
-		Targets: make(map[string]string, len(s.Targets)),
-		Labels:  s.Labels,
-	}
-	for tname, _ := range s.Targets {
+	result := *s
+	result.Targets = make(map[string]string, len(s.Targets))
+	for tname := range s.Targets {
 		result.Targets[tname] = "<secret>"
 	}
 	return result, nil
@@ -245,7 +246,7 @@ type CollectorConfig struct {
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface for CollectorConfig.
 func (c *CollectorConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	// Default to undefined (a negative value) so it can be overriden by the global default when not explicitly set.
+	// Default to undefined (a negative value) so it can be overridden by the global default when not explicitly set.
 	c.MinInterval = -1
 
 	type plain CollectorConfig

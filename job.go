@@ -35,7 +35,7 @@ func NewJob(jc *config.JobConfig) (Job, error) {
 			for name, value := range sc.Labels {
 				// Shouldn't happen as there are sanity checks in config, but check nonetheless.
 				if _, found := constLabels[name]; found {
-					return nil, fmt.Errorf("[%s] duplicate label %q", j.logContext, jc.Name)
+					return nil, fmt.Errorf("[%s] duplicate label %q", j.logContext, name)
 				}
 				constLabels[name] = value
 			}

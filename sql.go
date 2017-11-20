@@ -14,6 +14,36 @@ import (
 	_ "github.com/lib/pq"              // register the PostgreSQL driver
 )
 
+// OpenConnection extracts the driver name from the DSN (expected as the URI scheme), adjusts it where necessary (e.g.
+// some driver supported DSN formats don't include a scheme), opens a DB handle ensuring early termination if the
+// context is closed (this is actually prevented by database/sql implementation), sets connection limits and returns
+// the handle.
+//
+// Below is the list of supported databases (with built in drivers) and their DSN formats. Unfortunately there is no
+// dynamic way of loading a third party driver library (as e.g. with Java classpaths), so any driver additions require
+// a binary rebuild.
+//
+// MySQL
+//
+// Using the [Go MySQL Driver](https://github.com/go-sql-driver/mysql), DSN format (passed to the driver stripped of the
+// `mysql://` prefix):
+//   mysql:/username:password@protocol(host:port)/dbname?param=value
+//
+// PostgreSQL
+//
+// Using the [pq driver](https://godoc.org/github.com/lib/pq), DSN format (passed through to the driver unchanged):
+//   postgres://username:password@host:port/dbname?param=value
+//
+// MS SQL Server
+//
+// Using the https://github.com/denisenkom/go-mssqldb driver, DSN format (passed through to the driver unchanged):
+//   sqlserver://username:password@host:port/instance?param=value
+//
+// Clickhouse
+//
+// Using the https://github.com/kshvakov/clickhouse driver, DSN format (passed to the driver with the`clickhouse://`
+// prefix replaced with `tcp://`):
+//   clickhouse://host:port?username=username&password=password&database=dbname&param=value
 func OpenConnection(ctx context.Context, logContext, dsn string) (*sql.DB, error) {
 	// Extract driver name from DSN.
 	idx := strings.Index(dsn, "://")

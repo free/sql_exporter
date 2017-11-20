@@ -81,7 +81,6 @@ func (q *Query) Run(ctx context.Context, conn *sql.DB) (*sql.Rows, error) {
 	if q.stmt == nil {
 		stmt, err := conn.PrepareContext(ctx, q.config.Query)
 		if err != nil {
-			log.Errorf("Failed to prepare query: %s", q.config.Name, err)
 			return nil, errors.Wrapf(err, "[%s] prepare query failed", q.logContext)
 		}
 		q.conn = conn
@@ -117,8 +116,10 @@ func (q *Query) ScanRow(rows *sql.Rows) (map[string]interface{}, error) {
 	// Not all requested columns could be mapped, fail.
 	if len(have) != len(q.columnTypes) {
 		missing := make([]string, len(q.columnTypes)-len(have))
-		for c, _ := range q.columnTypes {
-			missing = append(missing, c)
+		for c := range q.columnTypes {
+			if !have[c] {
+				missing = append(missing, c)
+			}
 		}
 		return nil, fmt.Errorf("%s, column(s) [%s] missing from query result", q.logContext, strings.Join(missing, "], ["))
 	}
