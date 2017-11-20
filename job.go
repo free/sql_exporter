@@ -19,7 +19,7 @@ type job struct {
 	logContext string
 }
 
-// NewTarget returns a new Job with the given configuration.
+// NewJob returns a new Job with the given configuration.
 func NewJob(jc *config.JobConfig) (Job, error) {
 	j := job{
 		config:     jc,
