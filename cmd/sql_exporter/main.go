@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"runtime"
 
 	"github.com/free/sql_exporter"
 	log "github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
+	_ "net/http/pprof"
 )
 
 func init() {
@@ -18,6 +20,11 @@ func init() {
 }
 
 func main() {
+	if os.Getenv("DEBUG") != "" {
+		runtime.SetBlockProfileRate(1)
+		runtime.SetMutexProfileFraction(1)
+	}
+
 	var (
 		showVersion   = flag.Bool("version", false, "Print version information.")
 		listenAddress = flag.String("web.listen-address", ":9237", "Address to listen on for web interface and telemetry.")
@@ -54,11 +61,13 @@ func main() {
 		ErrorLog:      LogFunc(log.Error),
 		ErrorHandling: promhttp.ContinueOnError,
 	}
-	// Expose metrics from our own Exporter, which merges SQL target metrics with those from the default gatherer.
-	http.Handle(*metricsPath, promhttp.HandlerFor(exporter, opts))
 	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { http.Error(w, "OK", http.StatusOK) })
 	http.HandleFunc("/", HomeHandlerFunc(*metricsPath))
 	http.HandleFunc("/config", ConfigHandlerFunc(*metricsPath, exporter))
+
+	// Expose metrics merged from exporter and the default gatherer.
+	margingGatherer := prometheus.Gatherers{exporter, prometheus.DefaultGatherer}
+	http.Handle(*metricsPath, promhttp.HandlerFor(margingGatherer, opts))
 
 	log.Infof("Listening on %s", *listenAddress)
 	log.Fatal(http.ListenAndServe(*listenAddress, nil))

@@ -1,20 +1,21 @@
-package sql_exporter
+package config
 
 import (
 	"fmt"
 	"io/ioutil"
 	"strings"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"gopkg.in/yaml.v2"
 )
 
-// LoadConfig attempts to parse the given config file and return a Config object.
-func LoadConfig(path string) (*Config, error) {
+// Load attempts to parse the given config file and return a Config object.
+func Load(configFile string) (*Config, error) {
 	f := Config{}
 
-	buf, err := ioutil.ReadFile(path)
+	buf, err := ioutil.ReadFile(configFile)
 	if err != nil {
 		return &f, err
 	}
@@ -61,8 +62,8 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		colls[coll.Name] = coll
 	}
 	for _, j := range c.Jobs {
-		j.collectors = make([]*CollectorConfig, 0, len(j.Collectors))
-		for _, cname := range j.Collectors {
+		j.collectors = make([]*CollectorConfig, 0, len(j.CollectorRefs))
+		for _, cname := range j.CollectorRefs {
 			coll, found := colls[cname]
 			if !found {
 				return fmt.Errorf("unknown collector %q referenced by job %q", cname, j.Name)
@@ -81,7 +82,8 @@ func (c *Config) YAML() ([]byte, error) {
 
 // GlobalConfig contains globally applicable defaults.
 type GlobalConfig struct {
-	MinInterval model.Duration `yaml:"min_interval"` // minimum interval between query executions, default is 0
+	MinInterval   model.Duration `yaml:"min_interval"`   // minimum interval between query executions, default is 0
+	ScrapeTimeout model.Duration `yaml:"scrape_timeout"` // per-scrape timeout, global
 
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline" json:"-"`
@@ -89,7 +91,10 @@ type GlobalConfig struct {
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface for GlobalConfig.
 func (g *GlobalConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	// Default to running the queries on every scrape.
 	g.MinInterval = model.Duration(0)
+	// Default to 9 seconds, since Prometheus has a 10 second scrape timeout default.
+	g.ScrapeTimeout = model.Duration(9 * time.Second)
 
 	type plain GlobalConfig
 	if err := unmarshal((*plain)(g)); err != nil {
@@ -106,13 +111,18 @@ func (g *GlobalConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 // JobConfig defines a set of collectors to be executed on a set of targets.
 type JobConfig struct {
 	Name          string          `yaml:"job_name"`       // name of this job
-	Collectors    []string        `yaml:"collectors"`     // names of collectors to apply to all targets in this job
+	CollectorRefs []string        `yaml:"collectors"`     // names of collectors to apply to all targets in this job
 	StaticConfigs []*StaticConfig `yaml:"static_configs"` // collections of statically defined targets
 
 	collectors []*CollectorConfig // resolved collector references
 
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline" json:"-"`
+}
+
+// Collectors returns the collectors referenced by the job, resolved.
+func (j *JobConfig) Collectors() []*CollectorConfig {
+	return j.collectors
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface for JobConfig.
@@ -128,11 +138,11 @@ func (j *JobConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 
 	// At least one collector, no duplicates
-	if len(j.Collectors) == 0 {
+	if len(j.CollectorRefs) == 0 {
 		return fmt.Errorf("no collectors defined for job %q", j.Name)
 	}
-	for i, ci := range j.Collectors {
-		for _, cj := range j.Collectors[i+1:] {
+	for i, ci := range j.CollectorRefs {
+		for _, cj := range j.CollectorRefs[i+1:] {
 			if ci == cj {
 				return fmt.Errorf("duplicate collector reference %q by job %q", ci, j.Name)
 			}
@@ -263,8 +273,8 @@ func (c *CollectorConfig) UnmarshalYAML(unmarshal func(interface{}) error) error
 		} else {
 			// For literal queries generate a QueryConfig with a name based off collector and metric name.
 			metric.query = &QueryConfig{
-				Name:  fmt.Sprintf("%s.%s", c.Name, metric.Name),
-				Query: metric.Query,
+				Name:  fmt.Sprintf("%s.[literal]", metric.Name),
+				Query: metric.QueryLiteral,
 			}
 		}
 	}
@@ -275,20 +285,30 @@ func (c *CollectorConfig) UnmarshalYAML(unmarshal func(interface{}) error) error
 // MetricConfig defines a Prometheus metric, the SQL query to populate it and the mapping of columns to metric
 // keys/values.
 type MetricConfig struct {
-	Name       string   `yaml:"metric_name"`           // the Prometheus metric name
-	TypeString string   `yaml:"type"`                  // the Prometheus metric type
-	Help       string   `yaml:"help"`                  // the Prometheus metric help text
-	KeyLabels  []string `yaml:"key_labels,omitempty"`  // expose these columns as labels
-	ValueLabel string   `yaml:"value_label,omitempty"` // with multiple value columns, map their names under this label
-	Values     []string `yaml:"values"`                // expose each of these columns as a value, keyed by column name
-	Query      string   `yaml:"query,omitempty"`       // a literal query
-	QueryRef   string   `yaml:"query_ref,omitempty"`   // references a query in the query map
+	Name         string   `yaml:"metric_name"`           // the Prometheus metric name
+	TypeString   string   `yaml:"type"`                  // the Prometheus metric type
+	Help         string   `yaml:"help"`                  // the Prometheus metric help text
+	KeyLabels    []string `yaml:"key_labels,omitempty"`  // expose these columns as labels
+	ValueLabel   string   `yaml:"value_label,omitempty"` // with multiple value columns, map their names under this label
+	Values       []string `yaml:"values"`                // expose each of these columns as a value, keyed by column name
+	QueryLiteral string   `yaml:"query,omitempty"`       // a literal query
+	QueryRef     string   `yaml:"query_ref,omitempty"`   // references a query in the query map
 
 	valueType prometheus.ValueType // TypeString converted to prometheus.ValueType
 	query     *QueryConfig         // QueryConfig resolved from QueryRef or generated from Query
 
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline" json:"-"`
+}
+
+// ValueType returns the metric type, converted to a prometheus.ValueType.
+func (m *MetricConfig) ValueType() prometheus.ValueType {
+	return m.valueType
+}
+
+// Query returns the query defined (as a literal) or referenced by the metric.
+func (m *MetricConfig) Query() *QueryConfig {
+	return m.query
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface for MetricConfig.
@@ -308,7 +328,7 @@ func (m *MetricConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if m.Help == "" {
 		return fmt.Errorf("missing help for metric %q", m.Name)
 	}
-	if (m.Query == "") == (m.QueryRef == "") {
+	if (m.QueryLiteral == "") == (m.QueryRef == "") {
 		return fmt.Errorf("exactly one of query and query_ref should be specified for metric %q", m.Name)
 	}
 

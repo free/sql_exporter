@@ -3,6 +3,7 @@ package sql_exporter
 import (
 	"fmt"
 
+	"github.com/free/sql_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -13,30 +14,32 @@ type Job interface {
 
 // job implements Job. It wraps the corresponding JobConfig and a set of Targets.
 type job struct {
-	config  *JobConfig
-	targets []Target
+	config     *config.JobConfig
+	targets    []Target
+	logContext string
 }
 
-func NewJob(config *JobConfig) (Job, error) {
+func NewJob(jc *config.JobConfig) (Job, error) {
 	j := job{
-		config:  config,
-		targets: make([]Target, 0, 10),
+		config:     jc,
+		targets:    make([]Target, 0, 10),
+		logContext: fmt.Sprintf("job=%q", jc.Name),
 	}
 
-	for _, sc := range config.StaticConfigs {
+	for _, sc := range jc.StaticConfigs {
 		for tname, dsn := range sc.Targets {
 			constLabels := prometheus.Labels{
-				"job":      config.Name,
+				"job":      jc.Name,
 				"instance": tname,
 			}
 			for name, value := range sc.Labels {
 				// Shouldn't happen as there are sanity checks in config, but check nonetheless.
 				if _, found := constLabels[name]; found {
-					return nil, fmt.Errorf("duplicate label %q in job %q", name, config.Name)
+					return nil, fmt.Errorf("[%s] duplicate label %q", j.logContext, jc.Name)
 				}
 				constLabels[name] = value
 			}
-			t, err := NewTarget(tname, dsn, config.collectors, constLabels)
+			t, err := NewTarget(j.logContext, tname, dsn, jc.Collectors(), constLabels)
 			if err != nil {
 				return nil, err
 			}

@@ -4,8 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
-	"github.com/pkg/errors"
+	"github.com/free/sql_exporter/config"
+	log "github.com/golang/glog"
 	dto "github.com/prometheus/client_model/go"
 )
 
@@ -18,42 +20,50 @@ type Collector interface {
 
 // collector implements Collector. It wraps a collection of queries, metrics and the database to collect them from.
 type collector struct {
-	config  *CollectorConfig
-	queries []*Query
+	config     *config.CollectorConfig
+	queries    []*Query
+	logContext string
 }
 
 // NewCollector returns a new Collector with the given configuration and database. The metrics it creates will all have
 // the provided const labels applied.
-func NewCollector(cc *CollectorConfig, constLabels []*dto.LabelPair) (Collector, error) {
+func NewCollector(logContext string, cc *config.CollectorConfig, constLabels []*dto.LabelPair) (Collector, error) {
+	logContext = fmt.Sprintf("%s, collector=%q", logContext, cc.Name)
+
 	// Maps each query to the list of metric families it populates.
-	queryMFs := make(map[*QueryConfig][]*MetricFamily, len(cc.Metrics))
+	queryMFs := make(map[*config.QueryConfig][]*MetricFamily, len(cc.Metrics))
 
 	// Instantiate metric families.
 	for _, mc := range cc.Metrics {
-		mf, err := NewMetricFamily(mc, constLabels)
+		mf, err := NewMetricFamily(logContext, mc, constLabels)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error in metric %q defined by collector %q", mc.Name, cc.Name)
+			return nil, err
 		}
-		mfs, found := queryMFs[mc.query]
+		mfs, found := queryMFs[mc.Query()]
 		if !found {
 			mfs = make([]*MetricFamily, 0, 2)
 		}
-		queryMFs[mc.query] = append(mfs, mf)
+		queryMFs[mc.Query()] = append(mfs, mf)
 	}
 
 	// Instantiate queries.
 	queries := make([]*Query, 0, len(cc.Metrics))
 	for qc, mfs := range queryMFs {
-		q, err := NewQuery(qc, mfs...)
+		q, err := NewQuery(logContext, qc, mfs...)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error in query %q defined by collector %q", qc.Name, cc.Name)
+			return nil, err
 		}
 		queries = append(queries, q)
 	}
 
 	c := collector{
-		config:  cc,
-		queries: queries,
+		config:     cc,
+		queries:    queries,
+		logContext: logContext,
+	}
+	if c.config.MinInterval > 0 {
+		log.V(2).Infof("[%s] Non-zero min_interval (%s), creating cached collector.", logContext, c.config.MinInterval)
+		return newCachingCollector(&c), nil
 	}
 	return &c, nil
 }
@@ -62,13 +72,13 @@ func NewCollector(cc *CollectorConfig, constLabels []*dto.LabelPair) (Collector,
 func (c *collector) Collect(ctx context.Context, conn *sql.DB, ch chan<- Metric) {
 	for _, q := range c.queries {
 		if ctx.Err() != nil {
-			ch <- NewInvalidMetric(c.String(), ctx.Err())
+			ch <- NewInvalidMetric(c.logContext, ctx.Err())
 			return
 		}
 		rows, err := q.Run(ctx, conn)
 		if err != nil {
 			// TODO: increment an error counter
-			ch <- NewInvalidMetric(c.String(), err)
+			ch <- NewInvalidMetric(fmt.Sprintf("[%s] error running query", c.logContext), err)
 			continue
 		}
 		defer rows.Close()
@@ -76,7 +86,7 @@ func (c *collector) Collect(ctx context.Context, conn *sql.DB, ch chan<- Metric)
 		for rows.Next() {
 			row, err := q.ScanRow(rows)
 			if err != nil {
-				ch <- NewInvalidMetric(fmt.Sprintf("error scanning row in collector %q", c.config.Name), err)
+				ch <- NewInvalidMetric(fmt.Sprintf("[%s] error scanning row", c.logContext), err)
 				continue
 			}
 			for _, mf := range q.metricFamilies {
@@ -85,12 +95,74 @@ func (c *collector) Collect(ctx context.Context, conn *sql.DB, ch chan<- Metric)
 		}
 		rows.Close()
 		if err = rows.Err(); err != nil {
-			ch <- NewInvalidMetric(c.String(), err)
+			ch <- NewInvalidMetric(c.logContext, err)
 		}
 	}
 }
 
-// String implements fmt.Stringer.
-func (c *collector) String() string {
-	return fmt.Sprintf("collector %q", c.config.Name)
+// newCachingCollector returns a new Collector wrapping the provided raw Collector.
+func newCachingCollector(rawColl *collector) Collector {
+	cc := &cachingCollector{
+		rawColl:     rawColl,
+		minInterval: time.Duration(rawColl.config.MinInterval),
+		cacheSem:    make(chan time.Time, 1),
+	}
+	cc.cacheSem <- time.Time{}
+	return cc
+}
+
+// Collector with a cache for collected metrics. Only used when min_interval is non-zero.
+type cachingCollector struct {
+	// Underlying collector, which is being cached.
+	rawColl *collector
+	// Convenience copy of rawColl.config.MinInterval.
+	minInterval time.Duration
+
+	// Used as a non=blocking semaphore protecting the cache. The value in the channel is the time of the cached metrics.
+	cacheSem chan time.Time
+	// Metrics saved from the last Collect() call.
+	cache []Metric
+}
+
+// Collect implements Collector.
+func (cc *cachingCollector) Collect(ctx context.Context, conn *sql.DB, ch chan<- Metric) {
+	if ctx.Err() != nil {
+		ch <- NewInvalidMetric(cc.rawColl.logContext, ctx.Err())
+		return
+	}
+
+	collTime := time.Now()
+	select {
+	case cacheTime := <-cc.cacheSem:
+		// Have the lock.
+		if age := collTime.Sub(cacheTime); age > cc.minInterval {
+			// Cache contents are older than minInterval, collect fresh metrics, cache them and pipe them through.
+			log.V(2).Infof("[%s] collecting fresh metrics: min_interval=%.3fs cache_age=%.3fs",
+				cc.rawColl.logContext, cc.minInterval.Seconds(), age.Seconds())
+			cacheChan := make(chan Metric, capMetricChan)
+			cc.cache = make([]Metric, 0, len(cc.cache))
+			go func() {
+				cc.rawColl.Collect(ctx, conn, cacheChan)
+				close(cacheChan)
+			}()
+			for metric := range cacheChan {
+				cc.cache = append(cc.cache, metric)
+				ch <- metric
+			}
+			cacheTime = collTime
+		} else {
+			log.V(2).Infof("[%s] returning cached metrics: min_interval=%.3fs cache_age=%.3fs",
+				cc.rawColl.logContext, cc.minInterval.Seconds(), age.Seconds())
+			for _, metric := range cc.cache {
+				ch <- metric
+			}
+		}
+		// Always replace the value in the semaphore channel.
+		cc.cacheSem <- cacheTime
+
+	case <-ctx.Done():
+		// Context closed, record an error and return
+		// TODO: increment an error counter
+		ch <- NewInvalidMetric(cc.rawColl.logContext, ctx.Err())
+	}
 }

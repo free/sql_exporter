@@ -2,6 +2,8 @@
 global:
   # Minimum interval between re-issuing a query: by default (==0) the query is executed on every scrape.
   min_interval: 0s
+  # Prometheus times out scrapes after 10s by default, give ourselves a bit of headroom.
+  scrape_timeout: 9s
 
 # Jobs are equivalent to jobs in the Prometheus configuration: they group similar targets sith similar metrics together. 
 jobs:
@@ -36,8 +38,8 @@ collectors:
   # Standard metrics for MS SQL Server.
   - collector_name: mssql_standard
 
-    # Similar to global.min_interval, but specific to the queries defined by this collector.
-    min_interval: 0s
+    # Similar to global.min_interval, but applies to the queries defined by this collector only.
+    #min_interval: 0s
 
     # A metric is a Prometheus metric with name, type, help text and (optional) additional labels, paired with exactly
     # one query to populate the metric labels and values from.
