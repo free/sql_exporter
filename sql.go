@@ -25,13 +25,13 @@ import (
 //
 // MySQL
 //
-// Using the [Go MySQL Driver](https://github.com/go-sql-driver/mysql), DSN format (passed to the driver stripped of the
-// `mysql://` prefix):
+// Using the https://github.com/go-sql-driver/mysql driver, DSN format (passed to the driver stripped of the `mysql://`
+// prefix):
 //   mysql:/username:password@protocol(host:port)/dbname?param=value
 //
 // PostgreSQL
 //
-// Using the [pq driver](https://godoc.org/github.com/lib/pq), DSN format (passed through to the driver unchanged):
+// Using the https://godoc.org/github.com/lib/pq driver, DSN format (passed through to the driver unchanged):
 //   postgres://username:password@host:port/dbname?param=value
 //
 // MS SQL Server

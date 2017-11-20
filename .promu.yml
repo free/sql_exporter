@@ -16,4 +16,5 @@ build:
 tarball:
     files:
       - LICENSE
+      - README.md
       - examples/sql_exporter.yml

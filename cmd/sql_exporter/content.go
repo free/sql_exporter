@@ -98,7 +98,7 @@ func ConfigHandlerFunc(metricsPath string, exporter sql_exporter.Exporter) func(
 	return func(w http.ResponseWriter, r *http.Request) {
 		config, err := exporter.Config().YAML()
 		if err != nil {
-			handleError(err, metricsPath, w, r)
+			HandleError(err, metricsPath, w, r)
 			return
 		}
 		configTemplate.Execute(w, &tdata{
