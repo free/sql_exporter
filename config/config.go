@@ -3,9 +3,11 @@ package config
 import (
 	"fmt"
 	"io/ioutil"
+	"path/filepath"
 	"strings"
 	"time"
 
+	log "github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"gopkg.in/yaml.v2"
@@ -13,15 +15,19 @@ import (
 
 // Load attempts to parse the given config file and return a Config object.
 func Load(configFile string) (*Config, error) {
-	f := Config{}
-
+	log.Infof("Loading configuration from %s", configFile)
 	buf, err := ioutil.ReadFile(configFile)
 	if err != nil {
-		return &f, err
+		return nil, err
 	}
 
-	err = yaml.Unmarshal(buf, &f)
-	return &f, err
+	c := Config{configFile: configFile}
+	err = yaml.Unmarshal(buf, &c)
+	if err != nil {
+		return nil, err
+	}
+
+	return &c, nil
 }
 
 //
@@ -30,9 +36,12 @@ func Load(configFile string) (*Config, error) {
 
 // Config is a collection of jobs and collectors.
 type Config struct {
-	Globals    GlobalConfig       `yaml:"global"`
-	Jobs       []*JobConfig       `yaml:"jobs"`
-	Collectors []*CollectorConfig `yaml:"collectors"`
+	Globals        GlobalConfig       `yaml:"global"`
+	CollectorFiles []string           `yaml:"collector_files,omitempty"`
+	Jobs           []*JobConfig       `yaml:"jobs"`
+	Collectors     []*CollectorConfig `yaml:"collectors,omitempty"`
+
+	configFile string
 
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline" json:"-"`
@@ -47,6 +56,11 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 	if len(c.Jobs) == 0 {
 		return fmt.Errorf("no jobs defined")
+	}
+
+	// Load any externally defined collectors.
+	if err := c.loadCollectorFiles(); err != nil {
+		return err
 	}
 
 	// Populate collector references for all jobs
@@ -78,6 +92,42 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 // YAML marshals the config into YAML format.
 func (c *Config) YAML() ([]byte, error) {
 	return yaml.Marshal(c)
+}
+
+// loadCollectorFiles resolves all collector file globs to files and loads the collectors they define.
+func (c *Config) loadCollectorFiles() error {
+	baseDir := filepath.Dir(c.configFile)
+	for _, cfglob := range c.CollectorFiles {
+		// Resolve relative paths by joining them to the configuration file's directory.
+		if len(cfglob) > 0 && !filepath.IsAbs(cfglob) {
+			cfglob = filepath.Join(baseDir, cfglob)
+		}
+
+		// Resolve the glob to actual filenames.
+		cfs, err := filepath.Glob(cfglob)
+		if err != nil {
+			// The only error can be a bad pattern.
+			return fmt.Errorf("error resolving collector files for %s: %s", cfglob, err)
+		}
+
+		// And load the CollectorConfig defined in each file.
+		for _, cf := range cfs {
+			buf, err := ioutil.ReadFile(cf)
+			if err != nil {
+				return err
+			}
+
+			cc := CollectorConfig{}
+			err = yaml.Unmarshal(buf, &cc)
+			if err != nil {
+				return err
+			}
+			c.Collectors = append(c.Collectors, &cc)
+			log.Infof("Loaded collector %q from %s", cc.Name, cf)
+		}
+	}
+
+	return nil
 }
 
 // GlobalConfig contains globally applicable defaults.

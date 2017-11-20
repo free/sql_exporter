@@ -33,82 +33,10 @@ jobs:
 
 # A collector is a named set of related metrics that are collected together. It can be applied to one or more jobs (i.e.
 # executed on all targets within that job), possibly along with other collectors.
+#
+# Collectors may be defined inline (under `collectors`) or loaded from `collector_files` (one collector per file).
 collectors:
 
-  # Standard metrics for MS SQL Server.
-  - collector_name: mssql_standard
-
-    # Similar to global.min_interval, but applies to the queries defined by this collector only.
-    #min_interval: 0s
-
-    # A metric is a Prometheus metric with name, type, help text and (optional) additional labels, paired with exactly
-    # one query to populate the metric labels and values from.
-    #
-    # The result columns conceptually fall into two categories:
-    #  * zero or more key columns: their values will be directly mapped to labels of the same name;
-    #  * one or more value columns:
-    #     * if exactly one value column, its name is ignored and its value becomes the metric value
-    #     * with multiple value columns, a `value_label` must be defined; the column name will populate this label and
-    #       the column value will popilate the metric value.
-    metrics:
-      # The metric name, type and help text, as exported to /metrics.
-      - metric_name: mssql_log_growths
-        # This is a Prometheus counter (monotonically increasing value).
-        type: counter
-        help: 'Total number of times the transaction log has been expanded since last restart, per database.'
-        # Optional set of labels derived from key columns.
-        key_labels:
-          # Populated from the `db` column of each row.
-          - db
-        # This query returns exactly one value per row, in the `counter` column.
-        values: [counter]
-        query: |
-          SELECT rtrim(instance_name) AS db, cntr_value AS counter
-          FROM sys.dm_os_performance_counters
-          WHERE counter_name = 'Log Growths' AND instance_name <> '_Total'
-
-      # A different metric, with multiple values produced from each result row.
-      - metric_name: mssql_io_stall
-        type: counter
-        help: 'Stall time (in milliseconds) per database and I/O operation, since server start.'
-        key_labels:
-          # Populated from the `db` column of the result.
-          - db
-        # Label populated with the value column name, configured via `values` (e.g. `operation="io_stall_read_ms"`).
-        #
-        # Required when multiple value columns are configured.
-        value_label: operation
-        # Multiple value columns: their name is recorded in the label defined by `attrubute_label` (e.g. 
-        # `operation="io_stall_read_ms"`).
-        values:
-          - io_stall_read_ms
-          - io_stall_write_ms
-          - io_stall_queued_read_ms
-          - io_stall_queued_write_ms
-        query_ref: mssql_io_stall
-      # Uses same named query (referenced through query_ref) as mssql_io_stall.
-      - metric_name: mssql_io_stall_total
-        type: counter
-        help: 'Total stall time (in milliseconds) per database, since server start.'
-        key_labels:
-          # Populated from the `db` column of the result.
-          - db
-        # Only one value, populated from the `io_stall` column.
-        values:
-          - io_stall
-        query_ref: mssql_io_stall
-
-    # Named queries, referenced by one or more metrics, through query_ref.
-    queries:
-      - query_name: mssql_io_stall
-        query: |
-          SELECT
-            cast(DB_Name(a.database_id) as varchar) AS db,
-            sum(io_stall_read_ms) AS io_stall_read_ms,
-            sum(io_stall_write_ms) AS io_stall_write_ms,
-            sum(io_stall_queued_read_ms) AS io_stall_queued_read_ms,
-            sum(io_stall_queued_write_ms) AS io_stall_queued_write_ms
-          FROM
-            sys.dm_io_virtual_file_stats(null, null) a
-          INNER JOIN sys.master_files b ON a.database_id = b.database_id AND a.file_id = b.file_id
-          GROUP BY a.database_id
+# Collector files specifies a list of globs. One collector definition is read from each matching file.
+collector_files: 
+  - "*.collector.yml"
