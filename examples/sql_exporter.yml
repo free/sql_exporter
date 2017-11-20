@@ -5,12 +5,12 @@ global:
   # Prometheus times out scrapes after 10s by default, give ourselves a bit of headroom.
   scrape_timeout: 9s
 
-# Jobs are equivalent to jobs in the Prometheus configuration: they group similar targets sith similar metrics together. 
+# Jobs are equivalent to jobs in the Prometheus configuration: they group similar targets with similar metrics together. 
 jobs:
   # All metrics from all targets get a `job` label, set to this value.
   - job_name: mssql
 
-    # The set of collectors (defined below) applied to all targets in this job.
+    # The set of collectors (defined below) to apply to all targets in this job.
     collectors: [mssql_standard]
 
     # Similar to the Prometheus configuration, multiple sets of targets may be defined, each with an optional set of

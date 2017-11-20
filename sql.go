@@ -16,7 +16,7 @@ import (
 
 // OpenConnection extracts the driver name from the DSN (expected as the URI scheme), adjusts it where necessary (e.g.
 // some driver supported DSN formats don't include a scheme), opens a DB handle ensuring early termination if the
-// context is closed (this is actually prevented by database/sql implementation), sets connection limits and returns
+// context is closed (this is actually prevented by `database/sql` implementation), sets connection limits and returns
 // the handle.
 //
 // Below is the list of supported databases (with built in drivers) and their DSN formats. Unfortunately there is no
