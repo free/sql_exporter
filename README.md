@@ -54,9 +54,11 @@ Usage of ./sql_exporter:
 ## Configuration
 
 SQL Exporter uses YAML for configuration. Below is a very basic configuration, which will produce metrics that look like
-`pricing_update_time{job="pricing_db",instance="dbserver1.example.com:1433",env="prod",market="US"} 1511196767`. For
-more complex examples and generic DBMS collectors, check the
-[examples](https://github.com/free/sql_exporter/tree/master/examples) directory.
+`pricing_update_time{job="pricing_db",instance="dbserver1.example.com:1433",env="prod",market="US"} 1511196767`. For a
+slightly more comples, documented example see
+[`documentation/sql_exporter.yml`](https://github.com/free/sql_exporter/tree/master/documentation/sql_exporter.yml).
+For more practical examples and DBMS-specific "standard" collectors, check the
+[`examples`](https://github.com/free/sql_exporter/tree/master/examples) directory.
 
 ```yaml
 jobs:

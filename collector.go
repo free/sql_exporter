@@ -63,7 +63,7 @@ func NewCollector(logContext string, cc *config.CollectorConfig, constLabels []*
 		logContext: logContext,
 	}
 	if c.config.MinInterval > 0 {
-		log.V(2).Infof("[%s] Non-zero min_interval (%s), creating cached collector.", logContext, c.config.MinInterval)
+		log.V(2).Infof("[%s] Non-zero min_interval (%s), using cached collector.", logContext, c.config.MinInterval)
 		return newCachingCollector(&c), nil
 	}
 	return &c, nil

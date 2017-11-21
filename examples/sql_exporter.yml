@@ -1,6 +1,6 @@
 # Global defaults.
 global:
-  # Minimum interval between re-issuing a query: by default (==0) the query is executed on every scrape.
+  # Minimum interval between re-issuing a query on a target: by default (0s) the query is executed on every scrape.
   min_interval: 0s
   # Prometheus times out scrapes after 10s by default, give ourselves a bit of headroom.
   scrape_timeout: 9s
@@ -10,30 +10,23 @@ jobs:
   # All metrics from all targets get a `job` label, set to this value.
   - job_name: mssql
 
-    # The set of collectors (defined below) to apply to all targets in this job.
+    # The set of collectors (defined below) to be applied to all targets in this job.
     collectors: [mssql_standard]
 
     # Similar to the Prometheus configuration, multiple sets of targets may be defined, each with an optional set of
     # labels to be applied to all metrics.
     static_configs:
       - targets:
-          # Defines a target (`dbserver1`) with a driver specific data source name. All metrics collected from this
-          # target will have an instance="dbserver1" label applied to them.
-          'dbserver1': 'sqlserver://prom_user:prom_password@dbserver1'
-          'dbserver2': 'sqlserver://prom_user:prom_password@dbserver2'
-        # All metrics collected from dbserver1 and dbserver2 will have the env="prod" label applied.
+          'dbserver1.example.com:1433': 'sqlserver://prom_user:prom_password@dbserver1.example.com:1433'
+          'dbserver2.example.com:1433': 'sqlserver://prom_user:prom_password@dbserver2.example.com:1433'
         labels:
           env: 'prod'
 
-      # A different set of targets with the env="test" label.
       - targets:
-          'testdb:1434': 'sqlserver://prom_user:prom_password@testdb:1434'
+          'testdb.example.com:1433': 'sqlserver://prom_user:prom_password@testdb.example.com:1433'
         labels:
           env: 'test'
 
-# A collector is a named set of related metrics that are collected together. It can be applied to one or more jobs (i.e.
-# executed on all targets within that job), possibly along with other collectors.
-#
 # Collectors may be defined inline (under `collectors`) or loaded from `collector_files` (one collector per file).
 collectors:
 
