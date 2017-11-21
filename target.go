@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/free/sql_exporter/config"
+	"github.com/free/sql_exporter/errors"
 	"github.com/golang/protobuf/proto"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
@@ -45,7 +46,7 @@ type target struct {
 }
 
 // NewTarget returns a new Target with the given instance name, data source name, collectors and constant labels.
-func NewTarget(logContext, name, dsn string, ccs []*config.CollectorConfig, constLabels prometheus.Labels) (Target, error) {
+func NewTarget(logContext, name, dsn string, ccs []*config.CollectorConfig, constLabels prometheus.Labels) (Target, errors.WithContext) {
 	logContext = fmt.Sprintf("%s, target=%q", logContext, name)
 
 	constLabelPairs := make([]*dto.LabelPair, 0, len(constLabels))
@@ -90,7 +91,7 @@ func (t *target) Collect(ctx context.Context, ch chan<- Metric) {
 
 	err := t.ping(ctx)
 	if err != nil {
-		ch <- NewInvalidMetric(t.logContext, err)
+		ch <- NewInvalidMetric(errors.Wrap(t.logContext, err))
 		targetUp = false
 	}
 	// Export the target's `up` metric as early as we know what it should be.
@@ -101,7 +102,7 @@ func (t *target) Collect(ctx context.Context, ch chan<- Metric) {
 	if targetUp {
 		wg.Add(len(t.collectors))
 		for _, c := range t.collectors {
-			// If using a single DB connection, collectors will likely run sequentially anyway. But we might have more than 1/
+			// If using a single DB connection, collectors will likely run sequentially anyway. But we might have more.
 			go func(collector Collector) {
 				defer wg.Done()
 				collector.Collect(ctx, t.conn, ch)
@@ -115,7 +116,7 @@ func (t *target) Collect(ctx context.Context, ch chan<- Metric) {
 	ch <- NewMetric(t.scrapeDurationDesc, float64(time.Since(scrapeStart))*1e-9)
 }
 
-func (t *target) ping(ctx context.Context) error {
+func (t *target) ping(ctx context.Context) errors.WithContext {
 	// Create the DB handle, if necessary. It won't usually open an actual connection, so we'll need to ping afterwards.
 	// We cannot do this only once at creation time because the sql.Open() documentation says it "may" open an actual
 	// connection, so it "may" actually fail to open a handle to a DB that's initially down.
@@ -123,7 +124,7 @@ func (t *target) ping(ctx context.Context) error {
 		conn, err := OpenConnection(ctx, t.logContext, t.dsn)
 		if err != nil {
 			if err != ctx.Err() {
-				return err
+				return errors.Wrap(t.logContext, err)
 			}
 			// if err == ctx.Err() fall through
 		} else {
@@ -135,14 +136,14 @@ func (t *target) ping(ctx context.Context) error {
 	if t.conn != nil && ctx.Err() == nil {
 		if err := PingDB(ctx, t.conn); err != nil {
 			if err != ctx.Err() {
-				return err
+				return errors.Wrap(t.logContext, err)
 			}
 			// if err == ctx.Err() fall through
 		}
 	}
 
 	if ctx.Err() != nil {
-		return ctx.Err()
+		return errors.Wrap(t.logContext, ctx.Err())
 	}
 	return nil
 }

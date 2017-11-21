@@ -324,7 +324,7 @@ func (c *CollectorConfig) UnmarshalYAML(unmarshal func(interface{}) error) error
 		} else {
 			// For literal queries generate a QueryConfig with a name based off collector and metric name.
 			metric.query = &QueryConfig{
-				Name:  fmt.Sprintf("%s.[literal]", metric.Name),
+				Name:  metric.Name,
 				Query: metric.QueryLiteral,
 			}
 		}
@@ -380,7 +380,7 @@ func (m *MetricConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return fmt.Errorf("missing help for metric %q", m.Name)
 	}
 	if (m.QueryLiteral == "") == (m.QueryRef == "") {
-		return fmt.Errorf("exactly one of query and query_ref should be specified for metric %q", m.Name)
+		return fmt.Errorf("exactly one of query and query_ref must be specified for metric %q", m.Name)
 	}
 
 	switch strings.ToLower(m.TypeString) {
@@ -440,7 +440,7 @@ func (q *QueryConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 	// Check required fields
 	if q.Name == "" {
-		return fmt.Errorf("missing name for query %+v", q)
+		return fmt.Errorf("missing name for query %+v", *q)
 	}
 	if q.Query == "" {
 		return fmt.Errorf("missing query literal for query %q", q.Name)

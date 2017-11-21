@@ -4,11 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strings"
 
 	"github.com/free/sql_exporter/config"
+	"github.com/free/sql_exporter/errors"
 	log "github.com/golang/glog"
-	"github.com/pkg/errors"
 )
 
 // Query wraps a sql.Stmt and all the metrics populated from it. It helps extract keys and values from result rows.
@@ -32,7 +31,7 @@ const (
 )
 
 // NewQuery returns a new Query that will populate the given metric families.
-func NewQuery(logContext string, qc *config.QueryConfig, metricFamilies ...*MetricFamily) (*Query, error) {
+func NewQuery(logContext string, qc *config.QueryConfig, metricFamilies ...*MetricFamily) (*Query, errors.WithContext) {
 	logContext = fmt.Sprintf("%s, query=%q", logContext, qc.Name)
 
 	columnTypes := make(columnTypeMap)
@@ -60,11 +59,11 @@ func NewQuery(logContext string, qc *config.QueryConfig, metricFamilies ...*Metr
 }
 
 // setColumnType stores the provided type for a given column, checking for conflicts in the process.
-func setColumnType(logContext, columnName string, ctype columnType, columnTypes columnTypeMap) error {
+func setColumnType(logContext, columnName string, ctype columnType, columnTypes columnTypeMap) errors.WithContext {
 	previousType, found := columnTypes[columnName]
 	if found {
 		if previousType != ctype {
-			return fmt.Errorf("[%s] column %q used both as key and value", logContext, columnName)
+			return errors.Errorf(logContext, "column %q used both as key and value", columnName)
 		}
 	} else {
 		columnTypes[columnName] = ctype
@@ -73,7 +72,7 @@ func setColumnType(logContext, columnName string, ctype columnType, columnTypes 
 }
 
 // Run executes the query on the provided database, in the provided context.
-func (q *Query) Run(ctx context.Context, conn *sql.DB) (*sql.Rows, error) {
+func (q *Query) Run(ctx context.Context, conn *sql.DB) (*sql.Rows, errors.WithContext) {
 	if q.conn != nil && q.conn != conn {
 		panic(fmt.Sprintf("[%s] Expecting to always run on the same database handle", q.logContext))
 	}
@@ -81,26 +80,27 @@ func (q *Query) Run(ctx context.Context, conn *sql.DB) (*sql.Rows, error) {
 	if q.stmt == nil {
 		stmt, err := conn.PrepareContext(ctx, q.config.Query)
 		if err != nil {
-			return nil, errors.Wrapf(err, "[%s] prepare query failed", q.logContext)
+			return nil, errors.Wrapf(q.logContext, err, "prepare query failed")
 		}
 		q.conn = conn
 		q.stmt = stmt
 	}
-	return q.stmt.QueryContext(ctx)
+	rows, err := q.stmt.QueryContext(ctx)
+	return rows, errors.Wrap(q.logContext, err)
 }
 
 // ScanRow scans the current row into a map of column name to value, with string values for key columns and float64
 // values for value columns.
-func (q *Query) ScanRow(rows *sql.Rows) (map[string]interface{}, error) {
+func (q *Query) ScanRow(rows *sql.Rows) (map[string]interface{}, errors.WithContext) {
 	columns, err := rows.Columns()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(q.logContext, err)
 	}
 
 	// Create the slice to scan the row into, with strings for keys and float64s for values.
 	dest := make([]interface{}, 0, len(columns))
 	have := make(map[string]bool, len(q.columnTypes))
-	for _, column := range columns {
+	for i, column := range columns {
 		switch q.columnTypes[column] {
 		case columnTypeKey:
 			dest = append(dest, new(string))
@@ -109,25 +109,29 @@ func (q *Query) ScanRow(rows *sql.Rows) (map[string]interface{}, error) {
 			dest = append(dest, new(float64))
 			have[column] = true
 		default:
-			log.V(1).Infof("[%s] Extra column %q returned by query %q", q.logContext, column)
+			if column == "" {
+				log.Warningf("[%s] Unnamed column %d returned by query\n  %s", q.logContext, i, q.config.Query)
+			} else {
+				log.Warningf("[%s] Extra column %q returned by query\n  %s", q.logContext, column, q.config.Query)
+			}
 			dest = append(dest, new(interface{}))
 		}
 	}
 	// Not all requested columns could be mapped, fail.
 	if len(have) != len(q.columnTypes) {
-		missing := make([]string, len(q.columnTypes)-len(have))
+		missing := make([]string, 0, len(q.columnTypes)-len(have))
 		for c := range q.columnTypes {
 			if !have[c] {
 				missing = append(missing, c)
 			}
 		}
-		return nil, fmt.Errorf("%s, column(s) [%s] missing from query result", q.logContext, strings.Join(missing, "], ["))
+		return nil, errors.Errorf(q.logContext, "column(s) %q missing from query result", missing)
 	}
 
 	// Scan the row content into dest.
 	err = rows.Scan(dest...)
 	if err != nil {
-		return nil, errors.Wrapf(err, "[%s] scanning of query result failed", q.logContext)
+		return nil, errors.Wrapf(q.logContext, err, "scanning of query result failed")
 	}
 
 	// Pick all values we're interested in into a map.

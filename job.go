@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/free/sql_exporter/config"
+	"github.com/free/sql_exporter/errors"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -20,7 +21,7 @@ type job struct {
 }
 
 // NewJob returns a new Job with the given configuration.
-func NewJob(jc *config.JobConfig) (Job, error) {
+func NewJob(jc *config.JobConfig) (Job, errors.WithContext) {
 	j := job{
 		config:     jc,
 		targets:    make([]Target, 0, 10),
@@ -36,7 +37,7 @@ func NewJob(jc *config.JobConfig) (Job, error) {
 			for name, value := range sc.Labels {
 				// Shouldn't happen as there are sanity checks in config, but check nonetheless.
 				if _, found := constLabels[name]; found {
-					return nil, fmt.Errorf("[%s] duplicate label %q", j.logContext, name)
+					return nil, errors.Errorf(j.logContext, "duplicate label %q", name)
 				}
 				constLabels[name] = value
 			}

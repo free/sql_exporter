@@ -1,4 +1,4 @@
-# A collector definint standard metrics for MS SQL Server.
+# A collector defining standard metrics for Microsoft SQL Server.
 collector_name: mssql_standard
 
 # Similar to global.min_interval, but applies to the queries defined by this collector only.

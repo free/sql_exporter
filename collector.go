@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/free/sql_exporter/config"
+	"github.com/free/sql_exporter/errors"
 	log "github.com/golang/glog"
 	dto "github.com/prometheus/client_model/go"
 )
@@ -27,7 +28,7 @@ type collector struct {
 
 // NewCollector returns a new Collector with the given configuration and database. The metrics it creates will all have
 // the provided const labels applied.
-func NewCollector(logContext string, cc *config.CollectorConfig, constLabels []*dto.LabelPair) (Collector, error) {
+func NewCollector(logContext string, cc *config.CollectorConfig, constLabels []*dto.LabelPair) (Collector, errors.WithContext) {
 	logContext = fmt.Sprintf("%s, collector=%q", logContext, cc.Name)
 
 	// Maps each query to the list of metric families it populates.
@@ -72,13 +73,13 @@ func NewCollector(logContext string, cc *config.CollectorConfig, constLabels []*
 func (c *collector) Collect(ctx context.Context, conn *sql.DB, ch chan<- Metric) {
 	for _, q := range c.queries {
 		if ctx.Err() != nil {
-			ch <- NewInvalidMetric(c.logContext, ctx.Err())
+			ch <- NewInvalidMetric(errors.Wrap(c.logContext, ctx.Err()))
 			return
 		}
 		rows, err := q.Run(ctx, conn)
 		if err != nil {
 			// TODO: increment an error counter
-			ch <- NewInvalidMetric(fmt.Sprintf("[%s] error running query", c.logContext), err)
+			ch <- NewInvalidMetric(err)
 			continue
 		}
 		defer rows.Close()
@@ -86,7 +87,7 @@ func (c *collector) Collect(ctx context.Context, conn *sql.DB, ch chan<- Metric)
 		for rows.Next() {
 			row, err := q.ScanRow(rows)
 			if err != nil {
-				ch <- NewInvalidMetric(fmt.Sprintf("[%s] error scanning row", c.logContext), err)
+				ch <- NewInvalidMetric(err)
 				continue
 			}
 			for _, mf := range q.metricFamilies {
@@ -94,8 +95,8 @@ func (c *collector) Collect(ctx context.Context, conn *sql.DB, ch chan<- Metric)
 			}
 		}
 		rows.Close()
-		if err = rows.Err(); err != nil {
-			ch <- NewInvalidMetric(c.logContext, err)
+		if err1 := rows.Err(); err1 != nil {
+			ch <- NewInvalidMetric(errors.Wrap(c.logContext, err1))
 		}
 	}
 }
@@ -127,7 +128,7 @@ type cachingCollector struct {
 // Collect implements Collector.
 func (cc *cachingCollector) Collect(ctx context.Context, conn *sql.DB, ch chan<- Metric) {
 	if ctx.Err() != nil {
-		ch <- NewInvalidMetric(cc.rawColl.logContext, ctx.Err())
+		ch <- NewInvalidMetric(errors.Wrap(cc.rawColl.logContext, ctx.Err()))
 		return
 	}
 
@@ -137,7 +138,7 @@ func (cc *cachingCollector) Collect(ctx context.Context, conn *sql.DB, ch chan<-
 		// Have the lock.
 		if age := collTime.Sub(cacheTime); age > cc.minInterval {
 			// Cache contents are older than minInterval, collect fresh metrics, cache them and pipe them through.
-			log.V(2).Infof("[%s] collecting fresh metrics: min_interval=%.3fs cache_age=%.3fs",
+			log.V(2).Infof("[%s] Collecting fresh metrics: min_interval=%.3fs cache_age=%.3fs",
 				cc.rawColl.logContext, cc.minInterval.Seconds(), age.Seconds())
 			cacheChan := make(chan Metric, capMetricChan)
 			cc.cache = make([]Metric, 0, len(cc.cache))
@@ -151,7 +152,7 @@ func (cc *cachingCollector) Collect(ctx context.Context, conn *sql.DB, ch chan<-
 			}
 			cacheTime = collTime
 		} else {
-			log.V(2).Infof("[%s] returning cached metrics: min_interval=%.3fs cache_age=%.3fs",
+			log.V(2).Infof("[%s] Returning cached metrics: min_interval=%.3fs cache_age=%.3fs",
 				cc.rawColl.logContext, cc.minInterval.Seconds(), age.Seconds())
 			for _, metric := range cc.cache {
 				ch <- metric
@@ -163,6 +164,6 @@ func (cc *cachingCollector) Collect(ctx context.Context, conn *sql.DB, ch chan<-
 	case <-ctx.Done():
 		// Context closed, record an error and return
 		// TODO: increment an error counter
-		ch <- NewInvalidMetric(cc.rawColl.logContext, ctx.Err())
+		ch <- NewInvalidMetric(errors.Wrap(cc.rawColl.logContext, ctx.Err()))
 	}
 }
