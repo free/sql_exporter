@@ -18,3 +18,4 @@ tarball:
       - LICENSE
       - README.md
       - examples/sql_exporter.yml
+      - examples/mssql_standard.collector.yml

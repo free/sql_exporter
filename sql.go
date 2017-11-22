@@ -27,7 +27,7 @@ import (
 //
 // Using the https://github.com/go-sql-driver/mysql driver, DSN format (passed to the driver stripped of the `mysql://`
 // prefix):
-//   mysql:/username:password@protocol(host:port)/dbname?param=value
+//   mysql://username:password@protocol(host:port)/dbname?param=value
 //
 // PostgreSQL
 //

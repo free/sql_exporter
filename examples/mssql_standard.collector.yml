@@ -12,7 +12,7 @@ collector_name: mssql_standard
 
 metrics:
   - metric_name: mssql_local_time_seconds
-    type: counter
+    type: gauge
     help: 'Local time in seconds since epoch (Unix time).'
     values: [unix_time]
     query: |
