@@ -151,6 +151,7 @@ A couple of alternative database agnostic exporters are available -- https://git
 https://github.com/chop-dbhi/prometheus-sql -- but they both do the collection at fixed intervals, independent of
 Prometheus scrapes. This is partly a philosophical issue, but practical issues are not all that difficult to imagine:
 jitter, duplicate data points or collected but not scraped data points. The control they provide over which labels get
-applied is limited and the initial label spammy.
+applied is limited and the base label set spammy.
 
-And finally, configurations are not easily reused without copy-pasting and editing across jobs/instances.
+Finally, in existing implementations configurations are not easily reused without copy-pasting and editing across
+jobs/instances.
