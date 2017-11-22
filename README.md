@@ -134,14 +134,14 @@ a schema and the [Clickhouse](github.com/kshvakov/clickhouse) one uses `tcp://`.
 of DSNs for the latter two drivers in order for this to work:
 
 
- DB | SQL Exporter expected DSN | Driver sees
+DB | SQL Exporter expected DSN | Driver sees
 ---|---|---
- MySQL | `mysql://user:passw@protocol(host:port)/dbname` | `user:passw@protocol(host:port)/dbname`
- PostgreSQL | `postgres://user:passw@host:port/dbname` | _unchanged_
- SQL Server | `sqlserver://user:passw@host:port/instance` | _unchanged_
- Clickhouse | `clickhouse://host:port?username=user&password=passw&database=dbname` | `tcp://host:port?username=user&password=passw&database=dbname`
+MySQL | `mysql://user:passw@protocol(host:port)/dbname` | `user:passw@protocol(host:port)/dbname`
+PostgreSQL | `postgres://user:passw@host:port/dbname` | _unchanged_
+SQL Server | `sqlserver://user:passw@host:port/instance` | _unchanged_
+Clickhouse | `clickhouse://host:port?username=user&password=passw&database=dbname` | `tcp://host:port?username=user&password=passw&database=dbname`
 
-##Why It Exists
+## Why It Exists
 
 SQL Exporter started off as an exporter for Microsoft SQL Server, for which no reliable exporters exist. But what is
 the point of a configuration driven SQL exporter, if you're going to use it alongside 2 other exporters with wholly
