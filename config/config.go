@@ -36,9 +36,10 @@ func Load(configFile string) (*Config, error) {
 
 // Config is a collection of jobs and collectors.
 type Config struct {
-	Globals        GlobalConfig       `yaml:"global"`
+	Globals        *GlobalConfig      `yaml:"global"`
 	CollectorFiles []string           `yaml:"collector_files,omitempty"`
-	Jobs           []*JobConfig       `yaml:"jobs"`
+	Target         *TargetConfig      `yaml:"target,omitempty"`
+	Jobs           []*JobConfig       `yaml:"jobs,omitempty"`
 	Collectors     []*CollectorConfig `yaml:"collectors,omitempty"`
 
 	configFile string
@@ -54,8 +55,8 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 
-	if len(c.Jobs) == 0 {
-		return fmt.Errorf("no jobs defined")
+	if (len(c.Jobs) == 0) == (c.Target == nil) {
+		return fmt.Errorf("exactly one of `jobs` and `target` must be defined")
 	}
 
 	// Load any externally defined collectors.
@@ -63,7 +64,7 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 
-	// Populate collector references for all jobs
+	// Populate collector references for the target/jobs.
 	colls := make(map[string]*CollectorConfig)
 	for _, coll := range c.Collectors {
 		// Set the min interval to the global default if not explicitly set.
@@ -75,15 +76,19 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		}
 		colls[coll.Name] = coll
 	}
-	for _, j := range c.Jobs {
-		j.collectors = make([]*CollectorConfig, 0, len(j.CollectorRefs))
-		for _, cname := range j.CollectorRefs {
-			coll, found := colls[cname]
-			if !found {
-				return fmt.Errorf("unknown collector %q referenced by job %q", cname, j.Name)
-			}
-			j.collectors = append(j.collectors, coll)
+	if c.Target != nil {
+		cs, err := resolveCollectorRefs(c.Target.CollectorRefs, colls, "target")
+		if err != nil {
+			return err
 		}
+		c.Target.collectors = cs
+	}
+	for _, j := range c.Jobs {
+		cs, err := resolveCollectorRefs(j.CollectorRefs, colls, fmt.Sprintf("job %q", j.Name))
+		if err != nil {
+			return err
+		}
+		j.collectors = cs
 	}
 
 	return checkOverflow(c.XXX, "config")
@@ -155,6 +160,42 @@ func (g *GlobalConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 //
+// Target
+//
+
+// TargetConfig defines a DSN and a set of collectors to be executed on it.
+type TargetConfig struct {
+	DSN           Secret   `yaml:"data_source_name"` // data source name to connect to
+	CollectorRefs []string `yaml:"collectors"`       // names of collectors to execute on the target
+
+	collectors []*CollectorConfig // resolved collector references
+
+	// Catches all undefined fields and must be empty after parsing.
+	XXX map[string]interface{} `yaml:",inline" json:"-"`
+}
+
+// Collectors returns the collectors referenced by the target, resolved.
+func (t *TargetConfig) Collectors() []*CollectorConfig {
+	return t.collectors
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface for TargetConfig.
+func (t *TargetConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type plain TargetConfig
+	if err := unmarshal((*plain)(t)); err != nil {
+		return err
+	}
+
+	// Check required fields
+	if t.DSN == "" {
+		return fmt.Errorf("missing data_source_name for target %+v", t)
+	}
+	checkCollectorRefs(t.CollectorRefs, "target")
+
+	return checkOverflow(t.XXX, "target")
+}
+
+//
 // Jobs
 //
 
@@ -186,18 +227,7 @@ func (j *JobConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if j.Name == "" {
 		return fmt.Errorf("missing name for job %+v", j)
 	}
-
-	// At least one collector, no duplicates
-	if len(j.CollectorRefs) == 0 {
-		return fmt.Errorf("no collectors defined for job %q", j.Name)
-	}
-	for i, ci := range j.CollectorRefs {
-		for _, cj := range j.CollectorRefs[i+1:] {
-			if ci == cj {
-				return fmt.Errorf("duplicate collector reference %q by job %q", ci, j.Name)
-			}
-		}
-	}
+	checkCollectorRefs(j.CollectorRefs, fmt.Sprintf("job %q", j.Name))
 
 	if len(j.StaticConfigs) == 0 {
 		return fmt.Errorf("no targets defined for job %q", j.Name)
@@ -231,7 +261,7 @@ func (j *JobConfig) checkLabelCollisions() error {
 
 // StaticConfig defines a set of targets and optional labels to apply to the metrics collected from them.
 type StaticConfig struct {
-	Targets map[string]string `yaml:"targets"`          // map of target names to data source names
+	Targets map[string]Secret `yaml:"targets"`          // map of target names to data source names
 	Labels  map[string]string `yaml:"labels,omitempty"` // labels to apply to all metrics collected from the targets
 
 	// Catches all undefined fields and must be empty after parsing.
@@ -259,24 +289,13 @@ func (s *StaticConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		if dsn == "" {
 			return fmt.Errorf("empty data source name in static config %+v", s)
 		}
-		if _, ok := dsns[dsn]; ok {
+		if _, ok := dsns[string(dsn)]; ok {
 			return fmt.Errorf("duplicate data source name %q in static_config %+v", tname, s)
 		}
-		dsns[dsn] = nil
+		dsns[string(dsn)] = nil
 	}
 
 	return checkOverflow(s.XXX, "static_config")
-}
-
-// MarshalYAML implements the yaml.Marshaler interface for StaticConfig. It replaces DSNs with placeholders as they
-// may contain credentials.
-func (s *StaticConfig) MarshalYAML() (interface{}, error) {
-	result := *s
-	result.Targets = make(map[string]string, len(s.Targets))
-	for tname := range s.Targets {
-		result.Targets[tname] = "<secret>"
-	}
-	return result, nil
 }
 
 //
@@ -449,6 +468,50 @@ func (q *QueryConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	q.metrics = make([]*MetricConfig, 0, 2)
 
 	return checkOverflow(q.XXX, "metric")
+}
+
+// Secret special type for storing secrets.
+type Secret string
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface for Secrets.
+func (s *Secret) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type plain Secret
+	return unmarshal((*plain)(s))
+}
+
+// MarshalYAML implements the yaml.Marshaler interface for Secrets.
+func (s Secret) MarshalYAML() (interface{}, error) {
+	if s != "" {
+		return "<secret>", nil
+	}
+	return nil, nil
+}
+func checkCollectorRefs(collectorRefs []string, ctx string) error {
+	// At least one collector, no duplicates
+	if len(collectorRefs) == 0 {
+		return fmt.Errorf("no collectors defined for %s", ctx)
+	}
+	for i, ci := range collectorRefs {
+		for _, cj := range collectorRefs[i+1:] {
+			if ci == cj {
+				return fmt.Errorf("duplicate collector reference %q in %s", ci, ctx)
+			}
+		}
+	}
+	return nil
+}
+
+func resolveCollectorRefs(
+	collectorRefs []string, collectors map[string]*CollectorConfig, ctx string) ([]*CollectorConfig, error) {
+	resolved := make([]*CollectorConfig, 0, len(collectorRefs))
+	for _, cref := range collectorRefs {
+		c, found := collectors[cref]
+		if !found {
+			return nil, fmt.Errorf("unknown collector %q referenced in %s", cref, ctx)
+		}
+		resolved = append(resolved, c)
+	}
+	return resolved, nil
 }
 
 func checkLabel(label string, ctx ...string) error {

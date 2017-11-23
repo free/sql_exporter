@@ -41,7 +41,7 @@ func NewJob(jc *config.JobConfig) (Job, errors.WithContext) {
 				}
 				constLabels[name] = value
 			}
-			t, err := NewTarget(j.logContext, tname, dsn, jc.Collectors(), constLabels)
+			t, err := NewTarget(j.logContext, tname, string(dsn), jc.Collectors(), constLabels)
 			if err != nil {
 				return nil, err
 			}

@@ -51,23 +51,34 @@ func main() {
 
 	log.Infof("Starting SQL exporter %s %s", version.Info(), version.BuildContext())
 
-	exporter, err := sql_exporter.NewExporter(*configFile, prometheus.DefaultGatherer)
+	exporter, err := sql_exporter.NewExporter(*configFile)
 	if err != nil {
-		log.Fatalf("Error starting exporter: %s", err)
+		log.Fatalf("Error creating exporter: %s", err)
 	}
 
 	// Setup and start webserver.
-	opts := promhttp.HandlerOpts{
-		ErrorLog:      LogFunc(log.Error),
-		ErrorHandling: promhttp.ContinueOnError,
-	}
 	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { http.Error(w, "OK", http.StatusOK) })
 	http.HandleFunc("/", HomeHandlerFunc(*metricsPath))
 	http.HandleFunc("/config", ConfigHandlerFunc(*metricsPath, exporter))
 
-	// Expose metrics merged from exporter and the default gatherer.
-	margingGatherer := prometheus.Gatherers{exporter, prometheus.DefaultGatherer}
+	var margingGatherer prometheus.Gatherers
+	if exporter.Config().Target != nil {
+		// Single target mode. Only expose target metrics, but still go through Gatherers to have the metrics sorted.
+		margingGatherer = prometheus.Gatherers{exporter}
+	} else {
+		// Expose merged metrics from exporter and default gatherer.
+		margingGatherer = prometheus.Gatherers{exporter, prometheus.DefaultGatherer}
+	}
+	// ContinueOnError will return a HTTP 500 when no metrics are produced. In single target mode, this is what will
+	// happen when the target is down. In multi-target mode we always have at least process metrics and synthetic target
+	// metrics, so we never return HTTP 500.
+	opts := promhttp.HandlerOpts{
+		ErrorLog:      LogFunc(log.Error),
+		ErrorHandling: promhttp.ContinueOnError,
+	}
 	http.Handle(*metricsPath, promhttp.HandlerFor(margingGatherer, opts))
+	// Always also expose exporter metrics separately, for debugging purposes.
+	http.Handle("/sql_exporter_metrics", promhttp.HandlerFor(prometheus.DefaultGatherer, opts))
 
 	log.Infof("Listening on %s", *listenAddress)
 	log.Fatal(http.ListenAndServe(*listenAddress, nil))

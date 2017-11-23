@@ -46,8 +46,11 @@ type target struct {
 }
 
 // NewTarget returns a new Target with the given instance name, data source name, collectors and constant labels.
+// An empty target name means the exporter is runnning in single target mode: no synthetic metrics will be exported.
 func NewTarget(logContext, name, dsn string, ccs []*config.CollectorConfig, constLabels prometheus.Labels) (Target, errors.WithContext) {
-	logContext = fmt.Sprintf("%s, target=%q", logContext, name)
+	if name != "" {
+		logContext = fmt.Sprintf("%s, target=%q", logContext, name)
+	}
 
 	constLabelPairs := make([]*dto.LabelPair, 0, len(constLabels))
 	for n, v := range constLabels {
@@ -94,8 +97,10 @@ func (t *target) Collect(ctx context.Context, ch chan<- Metric) {
 		ch <- NewInvalidMetric(errors.Wrap(t.logContext, err))
 		targetUp = false
 	}
-	// Export the target's `up` metric as early as we know what it should be.
-	ch <- NewMetric(t.upDesc, boolToFloat64(targetUp))
+	if t.name != "" {
+		// Export the target's `up` metric as early as we know what it should be.
+		ch <- NewMetric(t.upDesc, boolToFloat64(targetUp))
+	}
 
 	var wg sync.WaitGroup
 	// Don't bother with the collectors if target is down.
@@ -112,8 +117,10 @@ func (t *target) Collect(ctx context.Context, ch chan<- Metric) {
 	// Wait for all collectors (if any) to complete.
 	wg.Wait()
 
-	// And export a `scrape duration` metric once we're done scraping.
-	ch <- NewMetric(t.scrapeDurationDesc, float64(time.Since(scrapeStart))*1e-9)
+	if t.name != "" {
+		// And export a `scrape duration` metric once we're done scraping.
+		ch <- NewMetric(t.scrapeDurationDesc, float64(time.Since(scrapeStart))*1e-9)
+	}
 }
 
 func (t *target) ping(ctx context.Context) errors.WithContext {

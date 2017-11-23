@@ -20,35 +20,38 @@ type Exporter interface {
 }
 
 type exporter struct {
-	config          *config.Config
-	jobs            []Job
-	targets         []Target
-	defaultGatherer prometheus.Gatherer
+	config  *config.Config
+	targets []Target
 }
 
 // NewExporter returns a new SQL Exporter for the provided config.
-func NewExporter(configFile string, defaultGatherer prometheus.Gatherer) (Exporter, error) {
+func NewExporter(configFile string) (Exporter, error) {
 	c, err := config.Load(configFile)
 	if err != nil {
 		return nil, err
 	}
 
-	jobs := make([]Job, 0, len(c.Jobs))
-	targets := make([]Target, 0, len(c.Jobs)*3)
-	for _, jc := range c.Jobs {
-		job, err := NewJob(jc)
+	var targets []Target
+	if c.Target != nil {
+		target, err := NewTarget("", "", string(c.Target.DSN), c.Target.Collectors(), nil)
 		if err != nil {
 			return nil, err
 		}
-		jobs = append(jobs, job)
-		targets = append(targets, job.Targets()...)
+		targets = []Target{target}
+	} else {
+		targets = make([]Target, 0, len(c.Jobs)*3)
+		for _, jc := range c.Jobs {
+			job, err := NewJob(jc)
+			if err != nil {
+				return nil, err
+			}
+			targets = append(targets, job.Targets()...)
+		}
 	}
 
 	return &exporter{
-		config:          c,
-		jobs:            jobs,
-		targets:         targets,
-		defaultGatherer: defaultGatherer,
+		config:  c,
+		targets: targets,
 	}, nil
 }
 

@@ -6,17 +6,35 @@ global:
   # Minimum interval between collector runs: by default (0s) collectors are executed on every scrape.
   min_interval: 0s
 
-# The target to monitor and the collectors to execute on it.
-target:
-  # Data source name always has a URI schema that matches the driver name. In some cases (e.g. MySQL)
-  # the schema gets dropped or replaced to match the driver expected DSN format.
-  data_source_name: 'sqlserver://prom_user:prom_password@dbserver1.example.com:1433'
+# Jobs are equivalent to jobs in the Prometheus configuration: they group similar targets with similar metrics together. 
+jobs:
+  # All metrics from all targets get a `job` label, set to this value.
+  - job_name: mssql
 
-  # Collectors (referenced by name) to execute on the target.
-  collectors: [mssql_standard]
+    # A set of collector names (defined below or in separate files) to be applied to all targets in this job.
+    collectors: [mssql_standard]
 
-# A collector is a named set of related metrics that are collected together. It can be referenced by name, possibly
-# along with other collectors.
+    # Similar to the Prometheus configuration, multiple sets of targets may be defined, each with an optional set of
+    # labels to be applied to all metrics.
+    static_configs:
+      - targets:
+          # Defines a target (`dbserver1.example.com:1433`) with a driver specific data source name. All metrics
+          # collected from this target will have an instance="dbserver1.example.com:1433" label applied to them.
+          'dbserver1.example.com:1433': 'sqlserver://prom_user:prom_password@dbserver1.example.com:1433'
+          # Ditto.
+          'dbserver2.example.com:1433': 'sqlserver://prom_user:prom_password@dbserver2.example.com:1433'
+        # All metrics collected from dbserver1 and dbserver2 will have the env="prod" label applied.
+        labels:
+          env: 'prod'
+
+      # A second set of targets with the env="test" label.
+      - targets:
+          'testdb.example.com:1433': 'sqlserver://prom_user:prom_password@testdb.example.com:1433'
+        labels:
+          env: 'test'
+
+# A collector is a named set of related metrics that are collected together. It can be applied to one or more jobs (i.e.
+# executed on all targets within that job), possibly along with other collectors.
 #
 # Collectors may be defined inline (under `collectors`) or loaded from `collector_files` (one collector per file).
 collectors:
