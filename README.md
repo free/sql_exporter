@@ -67,9 +67,9 @@ easy to share and reuse.
 
 The collector definition below generates gauge metrics of the form `pricing_update_time{market="US"}`.
 
-```yaml
-# pricing_data_freshness.collector.yml
+**`./pricing_data_freshness.collector.yml`**
 
+```yaml
 # This collector will be referenced in the exporter configuration as `pricing_data_freshness`.
 collector_name: pricing_data_freshness
 
@@ -94,7 +94,7 @@ In this configuration, one SQL Exporter instance gets deployed alongside each mo
 defined metrics, no SQL Exporter process metrics are exported. If the database is down, `/metrics` will respond with
 HTTP code 500 Internal Server Error (causing Prometheus to record `up=0` for the scrape).
 
-**`sql_exporter.yml`**
+**`./sql_exporter.yml`**
 
 ```yaml
 # Global settings and defaults.
@@ -133,7 +133,7 @@ All collector defined metrics get `job` and `instance` automatic labels, as well
 `env="prod"`) applied, similar to Prometheus `static_configs`. In addition to these, synthetic `up` and
 `scrape_duration` metrics are generated for each target. And SQL Exporter exports its own process metrics.
 
-**`sql_exporter.yml`**
+**`./sql_exporter.yml`**
 
 ```yaml
 # A SQL Exporter job is the equivalent of a Prometheus job: a set of related DB instances.
@@ -164,7 +164,7 @@ with `honor_labels: true` set, so that the `job` and `instance` labels applied t
 the job and instance labels of the SQL Exporter instance. See the [Prometheus documentation](
 https://prometheus.io/docs/prometheus/latest/configuration/configuration/#scrape_config) for details.
 
-**`prometheus.yml`** snippet
+**`./prometheus.yml`** [snippet]
 
 ```yaml
   - job_name: 'sql_exporter'
