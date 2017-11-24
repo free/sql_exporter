@@ -110,9 +110,9 @@ func (q *Query) ScanRow(rows *sql.Rows) (map[string]interface{}, errors.WithCont
 			have[column] = true
 		default:
 			if column == "" {
-				log.Warningf("[%s] Unnamed column %d returned by query\n  %s", q.logContext, i, q.config.Query)
+				log.Warningf("[%s] Unnamed column %d returned by query", q.logContext, i)
 			} else {
-				log.Warningf("[%s] Extra column %q returned by query\n  %s", q.logContext, column, q.config.Query)
+				log.Warningf("[%s] Extra column %q returned by query", q.logContext, column)
 			}
 			dest = append(dest, new(interface{}))
 		}
