@@ -8,15 +8,15 @@ SQL Exporter is a configuration driven exporter that exposes metrics gathered fr
 monitoring system. Out of the box, it provides support for MySQL, PostgreSQL, Microsoft SQL Server and Clickhouse, but
 any DBMS for which a Go driver is available may be monitored after rebuilding the binary with the DBMS driver included.
 
-The collected metrics and the queries behind them are entirely configuration defined. SQL queries are grouped into
-collectors -- logical groups of queries, e.g. *query stats* or *I/O stats*, mapped to the metrics they populate. They
-may be DBMS-specific collectors (e.g. *MySQL InnoDB stats*) or custom, deployment specific metrics (e.g. *pricing data
+The collected metrics and the queries that produce them are entirely configuration defined. SQL queries are grouped into
+collectors -- logical groups of queries, e.g. *query stats* or *I/O stats*, mapped to the metrics they populate.
+Collectors may be DBMS-specific (e.g. *MySQL InnoDB stats*) or custom, deployment specific (e.g. *pricing data
 freshness*). This means you can quickly and easily set up custom collectors to measure data quality, whatever that might
 mean in your specific case.
 
 Per the Prometheus philosophy, scrapes are synchronous (metrics are collected on every `/metrics` poll) but, in order to
-reduce load, minimum collection intervals may optionally be set per collector, producing cached metrics when queried
-more frequently than the configured interval.
+keep load at reasonable levels, minimum collection intervals may optionally be set per collector, producing cached
+metrics when queried more frequently than the configured interval.
 
 ## Usage
 
@@ -49,15 +49,11 @@ Usage of ./sql_exporter:
 
 ## Configuration
 
-This document describes the concepts and uses a few bare bones configuration examples to illustrate them.
+This document describes the core concepts and uses a few bare bones configuration examples to illustrate them.
 For comprehensive, documented configuration files check out the
 [`documentation`](https://github.com/free/sql_exporter/tree/master/documentation) directory.
 You will find ready to use "standard" DBMS-specific collector definitions in the
 [`examples`](https://github.com/free/sql_exporter/tree/master/examples) directory.
-
-There are two configurations in which SQL Exporter may be deployed. One is the Prometheus standard *exporter as agent*,
-alongside the monitored DB server. The other is a multi-target, hub like deployment, with SQL Exporter polling multiple
-DBMS instances of different types and with different uses concurrently, useful for test and development.
 
 ### Collectors
 
@@ -85,14 +81,18 @@ metrics:
     query: |
       SELECT Market, max(UpdateTime) AS LastUpdateTime
       FROM MarketPrices
-      GROUP BY market
+      GROUP BY Market
 ```
 
-### Single Target Deployment
+### Production Deployment
 
-In this configuration, one SQL Exporter instance gets deployed alongside each monitored DB server. Only collector
-defined metrics, no SQL Exporter process metrics are exported. If the database is down, `/metrics` will respond with
-HTTP code 500 Internal Server Error (causing Prometheus to record `up=0` for the scrape).
+In a production environment SQL Exporter is usually deployed as a *sidecar*, running alongside the monitored DB server.
+If both the exporter and the DB server are on the same host, they will share the same failure domain: they will usually
+be either both up and running or both down.
+
+In this configuration only metrics defined by collectors are exported. If the DB server is down, `/metrics` will respond
+with HTTP code 500 Internal Server Error, causing Prometheus to record `up=0` for that scrape. If you specifically want
+to monitor the SQL Exporter instance itself, it exports its process metrics at `/sql_exporter_metrics`.
 
 **`./sql_exporter.yml`**
 
@@ -125,18 +125,25 @@ collector_files:
   - "*.collector.yml"
 ```
 
-### Multi-Target
+### Testing and Development Deployment
 
-**Note:** *While SQL Exporter itself will run just as reliably in multi-target mode, there are constraints (such as one
-single, global `scrape_timeout` value) which limit its use to test and development.*
+**Note:** *While SQL Exporter itself will run just as reliably in hub mode, there are constraints (such as it becoming
+a single point of faulure or the added latency) which usually limit its use to test and development.*
 
-For multi-target deployment, SQL Exporter borrows Prometheus concepts such as job and instance: a job may e.g. cover all
+For collector testing and development SQL Exporter may be deployed as a hub, with one SQL Exporter instance polling
+multiple DBMS instances (possibly of different types and with different uses) concurrently.
+
+In this configuration SQL Exporter borrows Prometheus concepts such as job and instance: a job may e.g. cover all
 MySQL instances or all replicas of a pricing database; and consists of a set of instances. Each job references by name
 a number of collectors: the queries defined by those collectors are executed on all instances belonging to the job.
-
 All collector defined metrics get `job` and `instance` automatic labels, as well as any custom target labels (e.g.
 `env="prod"`) applied, similar to Prometheus `static_configs`. In addition to these, synthetic `up` and
-`scrape_duration` metrics are generated for each target. And SQL Exporter exports its own process metrics.
+`scrape_duration` metrics are generated for each target. And SQL Exporter adds its own process metrics to the `/metrics`
+contents.
+
+This allows for fast turnaround times (no need to deploy the configuration remotely), while producing the exact same
+metrics and labels that locally deployed exporters would. Once the collector configuration is complete, local exporters
+can be deployed with Prometheus targeted at them instead of the hub exporter, with zero gaps in history.
 
 **`./sql_exporter.yml`**
 
