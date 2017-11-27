@@ -21,7 +21,7 @@ type job struct {
 }
 
 // NewJob returns a new Job with the given configuration.
-func NewJob(jc *config.JobConfig) (Job, errors.WithContext) {
+func NewJob(jc *config.JobConfig, gc *config.GlobalConfig) (Job, errors.WithContext) {
 	j := job{
 		config:     jc,
 		targets:    make([]Target, 0, 10),
@@ -41,7 +41,7 @@ func NewJob(jc *config.JobConfig) (Job, errors.WithContext) {
 				}
 				constLabels[name] = value
 			}
-			t, err := NewTarget(j.logContext, tname, string(dsn), jc.Collectors(), constLabels)
+			t, err := NewTarget(j.logContext, tname, string(dsn), jc.Collectors(), constLabels, gc)
 			if err != nil {
 				return nil, err
 			}

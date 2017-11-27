@@ -33,7 +33,7 @@ func NewExporter(configFile string) (Exporter, error) {
 
 	var targets []Target
 	if c.Target != nil {
-		target, err := NewTarget("", "", string(c.Target.DSN), c.Target.Collectors(), nil)
+		target, err := NewTarget("", "", string(c.Target.DSN), c.Target.Collectors(), nil, c.Globals)
 		if err != nil {
 			return nil, err
 		}
@@ -41,7 +41,7 @@ func NewExporter(configFile string) (Exporter, error) {
 	} else {
 		targets = make([]Target, 0, len(c.Jobs)*3)
 		for _, jc := range c.Jobs {
-			job, err := NewJob(jc)
+			job, err := NewJob(jc, c.Globals)
 			if err != nil {
 				return nil, err
 			}

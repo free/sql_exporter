@@ -61,6 +61,9 @@ func Wrapf(context string, err error, format string, a ...interface{}) WithConte
 
 // Error implements error.
 func (w *withContext) Error() string {
+	if len(w.context) == 0 {
+		return w.err
+	}
 	return "[" + w.context + "] " + w.err
 }
 

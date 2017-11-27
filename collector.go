@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/free/sql_exporter/config"
@@ -71,34 +72,16 @@ func NewCollector(logContext string, cc *config.CollectorConfig, constLabels []*
 
 // Collect implements Collector.
 func (c *collector) Collect(ctx context.Context, conn *sql.DB, ch chan<- Metric) {
+	var wg sync.WaitGroup
+	wg.Add(len(c.queries))
 	for _, q := range c.queries {
-		if ctx.Err() != nil {
-			ch <- NewInvalidMetric(errors.Wrap(c.logContext, ctx.Err()))
-			return
-		}
-		rows, err := q.Run(ctx, conn)
-		if err != nil {
-			// TODO: increment an error counter
-			ch <- NewInvalidMetric(err)
-			continue
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			row, err := q.ScanRow(rows)
-			if err != nil {
-				ch <- NewInvalidMetric(err)
-				continue
-			}
-			for _, mf := range q.metricFamilies {
-				mf.Collect(row, ch)
-			}
-		}
-		rows.Close()
-		if err1 := rows.Err(); err1 != nil {
-			ch <- NewInvalidMetric(errors.Wrap(c.logContext, err1))
-		}
+		go func(q *Query) {
+			defer wg.Done()
+			q.Collect(ctx, conn, ch)
+		}(q)
 	}
+	// Only return once all queries have been processed
+	wg.Wait()
 }
 
 // newCachingCollector returns a new Collector wrapping the provided raw Collector.

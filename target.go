@@ -38,6 +38,7 @@ type target struct {
 	dsn                string
 	collectors         []Collector
 	constLabels        prometheus.Labels
+	globalConfig       *config.GlobalConfig
 	upDesc             MetricDesc
 	scrapeDurationDesc MetricDesc
 	logContext         string
@@ -47,7 +48,10 @@ type target struct {
 
 // NewTarget returns a new Target with the given instance name, data source name, collectors and constant labels.
 // An empty target name means the exporter is runnning in single target mode: no synthetic metrics will be exported.
-func NewTarget(logContext, name, dsn string, ccs []*config.CollectorConfig, constLabels prometheus.Labels) (Target, errors.WithContext) {
+func NewTarget(
+	logContext, name, dsn string, ccs []*config.CollectorConfig, constLabels prometheus.Labels, gc *config.GlobalConfig) (
+	Target, errors.WithContext) {
+
 	if name != "" {
 		logContext = fmt.Sprintf("%s, target=%q", logContext, name)
 	}
@@ -78,6 +82,7 @@ func NewTarget(logContext, name, dsn string, ccs []*config.CollectorConfig, cons
 		dsn:                dsn,
 		collectors:         collectors,
 		constLabels:        constLabels,
+		globalConfig:       gc,
 		upDesc:             upDesc,
 		scrapeDurationDesc: scrapeDurationDesc,
 		logContext:         logContext,
@@ -128,7 +133,7 @@ func (t *target) ping(ctx context.Context) errors.WithContext {
 	// We cannot do this only once at creation time because the sql.Open() documentation says it "may" open an actual
 	// connection, so it "may" actually fail to open a handle to a DB that's initially down.
 	if t.conn == nil {
-		conn, err := OpenConnection(ctx, t.logContext, t.dsn)
+		conn, err := OpenConnection(ctx, t.logContext, t.dsn, t.globalConfig.MaxConns, t.globalConfig.MaxIdleConns)
 		if err != nil {
 			if err != ctx.Err() {
 				return errors.Wrap(t.logContext, err)
