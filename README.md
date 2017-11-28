@@ -49,18 +49,19 @@ Usage of ./sql_exporter:
 
 ## Configuration
 
-SQL Exporter is deployed as a *sidecar*, running alongside the monitored DB server. If both the exporter and the DB
+SQL Exporter is deployed alongside the DB server it collects metrics from. If both the exporter and the DB
 server are on the same host, they will share the same failure domain: they will usually be either both up and running
 or both down. When the database is unreachable, `/metrics` responds with HTTP code 500 Internal Server Error, causing
 Prometheus to record `up=0` for that scrape. Only metrics defined by collectors are exported on the `/metrics` endpoint.
-If you want to monitor the SQL Exporter instance itself, it exports its process metrics at `/sql_exporter_metrics`.
+SQL Exporter process metrics are exported at `/sql_exporter_metrics`.
 
 The configuration examples listed here only cover the core elements. For a comprehensive and comprehensively documented
 configuration file check out 
 [`documentation/sql_exporter.yml`](https://github.com/free/sql_exporter/tree/master/documentation/sql_exporter.yml).
 You will find ready to use "standard" DBMS-specific collector definitions in the
-[`examples`](https://github.com/free/sql_exporter/tree/master/examples) directory. Please contribute your own collector
-definitions and metric additions, even if they are merely a different take on an already covered DBMS.
+[`examples`](https://github.com/free/sql_exporter/tree/master/examples) directory. You may contribute your own collector
+definitions and metric additions if you think they could be more widely useful, even if they are merely different takes
+on already covered DBMSs.
 
 **`./sql_exporter.yml`**
 
@@ -94,9 +95,8 @@ collector_files:
 
 ### Collectors
 
-SQL Exporter uses YAML for configuration. Collectors may be defined inline, in the exporter configuration file, under
-`collectors`, or they may be defined in separate files and referenced in the exporter configuration by name, making them
-easy to share and reuse.
+Collectors may be defined inline, in the exporter configuration file, under `collectors`, or they may be defined in
+separate files and referenced in the exporter configuration by name, making them easy to share and reuse.
 
 The collector definition below generates gauge metrics of the form `pricing_update_time{market="US"}`.
 
@@ -133,9 +133,8 @@ Unfortunately, while this works out of the box with the [MS SQL Server](https://
 a schema and the [Clickhouse](github.com/kshvakov/clickhouse) one uses `tcp://`. So SQL Exporter does a bit of massaging
 of DSNs for the latter two drivers in order for this to work:
 
-
 DB | SQL Exporter expected DSN | Driver sees
----|---|---
+:---|:---|:---
 MySQL | `mysql://user:passw@protocol(host:port)/dbname` | `user:passw@protocol(host:port)/dbname`
 PostgreSQL | `postgres://user:passw@host:port/dbname` | *unchanged*
 SQL Server | `sqlserver://user:passw@host:port/instance` | *unchanged*
