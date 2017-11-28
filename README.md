@@ -49,50 +49,18 @@ Usage of ./sql_exporter:
 
 ## Configuration
 
-This document describes the core concepts and uses a few bare bones configuration examples to illustrate them.
-For comprehensive, documented configuration files check out the
-[`documentation`](https://github.com/free/sql_exporter/tree/master/documentation) directory.
+SQL Exporter is deployed as a *sidecar*, running alongside the monitored DB server. If both the exporter and the DB
+server are on the same host, they will share the same failure domain: they will usually be either both up and running
+or both down. When the database is unreachable, `/metrics` responds with HTTP code 500 Internal Server Error, causing
+Prometheus to record `up=0` for that scrape. Only metrics defined by collectors are exported on the `/metrics` endpoint.
+If you want to monitor the SQL Exporter instance itself, it exports its process metrics at `/sql_exporter_metrics`.
+
+The configuration examples listed here only cover the core elements. For a comprehensive and comprehensively documented
+configuration file check out 
+[`documentation/sql_exporter.yml`](https://github.com/free/sql_exporter/tree/master/documentation/sql_exporter.yml).
 You will find ready to use "standard" DBMS-specific collector definitions in the
-[`examples`](https://github.com/free/sql_exporter/tree/master/examples) directory.
-
-### Collectors
-
-SQL Exporter uses YAML for configuration. Collectors may be defined inline, in the exporter configuration file, under
-`collectors`, or they may be defined in separate files and referenced in the exporter configuration by name, making them
-easy to share and reuse.
-
-The collector definition below generates gauge metrics of the form `pricing_update_time{market="US"}`.
-
-**`./pricing_data_freshness.collector.yml`**
-
-```yaml
-# This collector will be referenced in the exporter configuration as `pricing_data_freshness`.
-collector_name: pricing_data_freshness
-
-# A Prometheus metric with (optional) additional labels, value and labels populated from one query.
-metrics:
-  - metric_name: pricing_update_time
-    type: gauge
-    help: 'Time when prices for a market were last updated.'
-    key_labels:
-      # Populated from the `market` column of each row.
-      - Market
-    values: [LastUpdateTime]
-    query: |
-      SELECT Market, max(UpdateTime) AS LastUpdateTime
-      FROM MarketPrices
-      GROUP BY Market
-```
-
-### Production Deployment
-
-In a production environment SQL Exporter is usually deployed as a *sidecar*, running alongside the monitored DB server.
-If both the exporter and the DB server are on the same host, they will share the same failure domain: they will usually
-be either both up and running or both down.
-
-In this configuration only metrics defined by collectors are exported. If the DB server is down, `/metrics` will respond
-with HTTP code 500 Internal Server Error, causing Prometheus to record `up=0` for that scrape. If you specifically want
-to monitor the SQL Exporter instance itself, it exports its process metrics at `/sql_exporter_metrics`.
+[`examples`](https://github.com/free/sql_exporter/tree/master/examples) directory. Please contribute your own collector
+definitions and metric additions, even if they are merely a different take on an already covered DBMS.
 
 **`./sql_exporter.yml`**
 
@@ -125,69 +93,33 @@ collector_files:
   - "*.collector.yml"
 ```
 
-### Testing and Development Deployment
+### Collectors
 
-**Note:** *While SQL Exporter itself will run just as reliably in hub mode, there are constraints (such as it becoming
-a single point of faulure or the added latency) which usually limit its use to test and development.*
+SQL Exporter uses YAML for configuration. Collectors may be defined inline, in the exporter configuration file, under
+`collectors`, or they may be defined in separate files and referenced in the exporter configuration by name, making them
+easy to share and reuse.
 
-For collector testing and development SQL Exporter may be deployed as a hub, with one SQL Exporter instance polling
-multiple DBMS instances (possibly of different types and with different uses) concurrently.
+The collector definition below generates gauge metrics of the form `pricing_update_time{market="US"}`.
 
-In this configuration SQL Exporter borrows Prometheus concepts such as job and instance: a job may e.g. cover all
-MySQL instances or all replicas of a pricing database; and consists of a set of instances. Each job references by name
-a number of collectors: the queries defined by those collectors are executed on all instances belonging to the job.
-All collector defined metrics get `job` and `instance` automatic labels, as well as any custom target labels (e.g.
-`env="prod"`) applied, similar to Prometheus `static_configs`. In addition to these, synthetic `up` and
-`scrape_duration` metrics are generated for each target. And SQL Exporter adds its own process metrics to the `/metrics`
-contents.
-
-This allows for fast turnaround times (no need to deploy the configuration remotely), while producing the exact same
-metrics and labels that locally deployed exporters would. Once the collector configuration is complete, local exporters
-can be deployed with Prometheus targeted at them instead of the hub exporter, with zero gaps in history.
-
-**`./sql_exporter.yml`**
+**`./pricing_data_freshness.collector.yml`**
 
 ```yaml
-# A SQL Exporter job is the equivalent of a Prometheus job: a set of related DB instances.
-jobs:
+# This collector will be referenced in the exporter configuration as `pricing_data_freshness`.
+collector_name: pricing_data_freshness
 
-  # All metrics for the targets defined here get a `job="pricing_db"` label.
-  - job_name: pricing_db
-
-    # Collectors (referenced by name) to execute on all targets in this job.
-    collectors: [pricing_data_freshness]
-
-    # Similar to Prometheus static_configs.
-    static_configs:
-      - targets:
-          # Map of instance name (exported as instance label) to DSN
-          'dbserver1.example.com:1433': 'sqlserver://prom_user:prom_password@dbserver1.example.com:1433'
-          'dbserver2.example.com:1433': 'sqlserver://prom_user:prom_password@dbserver2.example.com:1433'
-        labels:
-          env: 'prod'
-
-# Collector definition files.
-collector_files: 
-  - "*.collector.yml"
-```
-
-In Prometheus, a multi-target SQL Exporter is configured similarly to a Prometheus Pushgateway, i.e. a regular target
-with `honor_labels: true` set, so that the `job` and `instance` labels applied to metrics are kept, not overwritten with
-the job and instance labels of the SQL Exporter instance. See the [Prometheus documentation](
-https://prometheus.io/docs/prometheus/latest/configuration/configuration/#scrape_config) for details.
-
-**`./prometheus.yml`** [snippet]
-
-```yaml
-  - job_name: 'sql_exporter'
-    honor_labels: true
-    static_configs:
-      - targets: ['localhost:9399']
-        labels:
-          # If SQL Exporter targets also have an `env` label defined, it will override this because of
-          # `honor_labels`. This label will essentially only apply to sql_exporter's own metrics (e.g.
-          # heap or CPU usage).
-          env: 'prod'
+# A Prometheus metric with (optional) additional labels, value and labels populated from one query.
+metrics:
+  - metric_name: pricing_update_time
+    type: gauge
+    help: 'Time when prices for a market were last updated.'
+    key_labels:
+      # Populated from the `market` column of each row.
+      - Market
+    values: [LastUpdateTime]
+    query: |
+      SELECT Market, max(UpdateTime) AS LastUpdateTime
+      FROM MarketPrices
+      GROUP BY Market
 ```
 
 ### Data Source Names
