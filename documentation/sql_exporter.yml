@@ -1,19 +1,30 @@
 # Global settings and defaults.
 global:
-  # Prometheus times out scrapes after 10s by default, give ourselves a bit of headroom. Make sure this is shorter than
-  # Prometheus' scrape_timeout or it may look like the DB is down when it is only slow.
-  scrape_timeout: 9s
+  # Scrape timeouts ensure that:
+  #   (i)  scraping completes in reasonable time and
+  #   (ii) slow queries are canceled early when the database is already under heavy load
+  # Prometheus informs targets of its own scrape timeout (via the "X-Prometheus-Scrape-Timeout-Seconds" request header)
+  # so the actual timeout is computed as:
+  #   min(scrape_timeout, X-Prometheus-Scrape-Timeout-Seconds - scrape_timeout_offset)
+  #
+  # If scrape_timeout <= 0, no timeout is set unless Prometheus provides one. The default is 10s.
+  scrape_timeout: 10s
+  # Subtracted from Prometheus' scrape_timeout to give us some headroom and prevent Prometheus from timing out first.
+  #
+  # Must be strictly positive. The default is 500ms.
+  scrape_timeout_offset: 500ms
   # Minimum interval between collector runs: by default (0s) collectors are executed on every scrape.
   min_interval: 0s
-  # Maximum number of open connections to any one target. Metric queries will run concurrently on multiple connections.
+  # Maximum number of open connections to any one target. Metric queries will run concurrently on multiple connections,
+  # as will concurrent scrapes.
   #
-  # If max_connections <= 0, then there is no limit on the number of open connections. The default is 1.
-  max_connections: 1
+  # If max_connections <= 0, then there is no limit on the number of open connections. The default is 3.
+  max_connections: 3
   # Maximum number of idle connections to any one target. Unless you use very long collection intervals, this should
   # always be the same as max_connections.
   #
-  # If max_idle_connections <= 0, no idle connections are retained. The default is 1.
-  max_idle_connections: 1
+  # If max_idle_connections <= 0, no idle connections are retained. The default is 3.
+  max_idle_connections: 3
 
 # The target to monitor and the collectors to execute on it.
 target:

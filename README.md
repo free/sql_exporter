@@ -67,17 +67,16 @@ definitions and metric additions, even if they are merely a different take on an
 ```yaml
 # Global settings and defaults.
 global:
-  # Prometheus times out scrapes after 10s by default, give ourselves a bit of headroom.
-  # Make sure this is shorter than Prometheus' scrape_timeout or a slow DB may appear to be down when
-  # collection takes longer.
-  scrape_timeout: 9s
+  # Subtracted from Prometheus' scrape_timeout to give us some headroom and prevent Prometheus from
+  # timing out first.
+  scrape_timeout_offset: 500ms
   # Minimum interval between collector runs: by default (0s) collectors are executed on every scrape.
   min_interval: 0s
   # Maximum number of open connections to any one target. Metric queries will run concurrently on
   # multiple connections.
-  max_connections: 1
+  max_connections: 3
   # Maximum number of idle connections to any one target.
-  max_idle_connections: 1
+  max_idle_connections: 3
 
 # The target to monitor and the list of collectors to execute on it.
 target:

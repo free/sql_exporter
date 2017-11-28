@@ -77,7 +77,7 @@ func (q *Query) Collect(ctx context.Context, conn *sql.DB, ch chan<- Metric) {
 		ch <- NewInvalidMetric(errors.Wrap(q.logContext, ctx.Err()))
 		return
 	}
-	rows, err := q.Run(ctx, conn)
+	rows, err := q.run(ctx, conn)
 	if err != nil {
 		// TODO: increment an error counter
 		ch <- NewInvalidMetric(err)
@@ -85,8 +85,14 @@ func (q *Query) Collect(ctx context.Context, conn *sql.DB, ch chan<- Metric) {
 	}
 	defer rows.Close()
 
+	dest, err := q.scanDest(rows)
+	if err != nil {
+		// TODO: increment an error counter
+		ch <- NewInvalidMetric(err)
+		return
+	}
 	for rows.Next() {
-		row, err := q.ScanRow(rows)
+		row, err := q.scanRow(rows, dest)
 		if err != nil {
 			ch <- NewInvalidMetric(err)
 			continue
@@ -95,14 +101,13 @@ func (q *Query) Collect(ctx context.Context, conn *sql.DB, ch chan<- Metric) {
 			mf.Collect(row, ch)
 		}
 	}
-	rows.Close()
 	if err1 := rows.Err(); err1 != nil {
 		ch <- NewInvalidMetric(errors.Wrap(q.logContext, err1))
 	}
 }
 
-// Run executes the query on the provided database, in the provided context.
-func (q *Query) Run(ctx context.Context, conn *sql.DB) (*sql.Rows, errors.WithContext) {
+// run executes the query on the provided database, in the provided context.
+func (q *Query) run(ctx context.Context, conn *sql.DB) (*sql.Rows, errors.WithContext) {
 	if q.conn != nil && q.conn != conn {
 		panic(fmt.Sprintf("[%s] Expecting to always run on the same database handle", q.logContext))
 	}
@@ -119,9 +124,9 @@ func (q *Query) Run(ctx context.Context, conn *sql.DB) (*sql.Rows, errors.WithCo
 	return rows, errors.Wrap(q.logContext, err)
 }
 
-// ScanRow scans the current row into a map of column name to value, with string values for key columns and float64
-// values for value columns.
-func (q *Query) ScanRow(rows *sql.Rows) (map[string]interface{}, errors.WithContext) {
+// scanDest creates a slice to scan the provided rows into, with strings for keys, float64s for values and interface{}
+// for any extra columns.
+func (q *Query) scanDest(rows *sql.Rows) ([]interface{}, errors.WithContext) {
 	columns, err := rows.Columns()
 	if err != nil {
 		return nil, errors.Wrap(q.logContext, err)
@@ -147,6 +152,7 @@ func (q *Query) ScanRow(rows *sql.Rows) (map[string]interface{}, errors.WithCont
 			dest = append(dest, new(interface{}))
 		}
 	}
+
 	// Not all requested columns could be mapped, fail.
 	if len(have) != len(q.columnTypes) {
 		missing := make([]string, 0, len(q.columnTypes)-len(have))
@@ -158,9 +164,19 @@ func (q *Query) ScanRow(rows *sql.Rows) (map[string]interface{}, errors.WithCont
 		return nil, errors.Errorf(q.logContext, "column(s) %q missing from query result", missing)
 	}
 
-	// Scan the row content into dest.
-	err = rows.Scan(dest...)
+	return dest, nil
+}
+
+// scanRow scans the current row into a map of column name to value, with string values for key columns and float64
+// values for value columns, using dest as a buffer.
+func (q *Query) scanRow(rows *sql.Rows, dest []interface{}) (map[string]interface{}, errors.WithContext) {
+	columns, err := rows.Columns()
 	if err != nil {
+		return nil, errors.Wrap(q.logContext, err)
+	}
+
+	// Scan the row content into dest.
+	if err := rows.Scan(dest...); err != nil {
 		return nil, errors.Wrapf(q.logContext, err, "scanning of query result failed")
 	}
 

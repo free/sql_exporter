@@ -3,6 +3,7 @@ package sql_exporter
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"fmt"
 	"sort"
 	"sync"
@@ -144,13 +145,18 @@ func (t *target) ping(ctx context.Context) errors.WithContext {
 		}
 	}
 
-	// If we have a handle and the context is not closed, check whether the connection is up.
+	// If we have a handle and the context is not closed, test whether the database is up.
 	if t.conn != nil && ctx.Err() == nil {
-		if err := PingDB(ctx, t.conn); err != nil {
-			if err != ctx.Err() {
-				return errors.Wrap(t.logContext, err)
+		var err error
+		// Ping up to max_connections + 1 times as long as the returned error is driver.ErrBadConn, to purge the connection
+		// pool of bad connections. This might happen if the previous scrape timed out and in-flight queries got canceled.
+		for i := 0; i <= t.globalConfig.MaxConns; i++ {
+			if err = PingDB(ctx, t.conn); err != driver.ErrBadConn {
+				break
 			}
-			// if err == ctx.Err() fall through
+		}
+		if err != nil {
+			return errors.Wrap(t.logContext, err)
 		}
 	}
 

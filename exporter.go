@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/free/sql_exporter/config"
 	"github.com/golang/protobuf/proto"
@@ -16,15 +15,20 @@ import (
 type Exporter interface {
 	prometheus.Gatherer
 
+	// WithContext returns a (single use) copy of the Exporter, which will use the provided context for Gather() calls.
+	WithContext(context.Context) Exporter
+	// Config returns the Exporter's underlying Config object.
 	Config() *config.Config
 }
 
 type exporter struct {
 	config  *config.Config
 	targets []Target
+
+	ctx context.Context
 }
 
-// NewExporter returns a new SQL Exporter for the provided config.
+// NewExporter returns a new Exporter with the provided config.
 func NewExporter(configFile string) (Exporter, error) {
 	c, err := config.Load(configFile)
 	if err != nil {
@@ -52,15 +56,20 @@ func NewExporter(configFile string) (Exporter, error) {
 	return &exporter{
 		config:  c,
 		targets: targets,
+		ctx:     context.Background(),
 	}, nil
+}
+
+func (e *exporter) WithContext(ctx context.Context) Exporter {
+	return &exporter{
+		config:  e.config,
+		targets: e.targets,
+		ctx:     ctx,
+	}
 }
 
 // Gather implements prometheus.Gatherer.
 func (e *exporter) Gather() ([]*dto.MetricFamily, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(e.config.Globals.ScrapeTimeout))
-	// Make sure to cancel the context, releasing any resources associated with it.
-	defer cancel()
-
 	var (
 		metricChan = make(chan Metric, capMetricChan)
 		errs       prometheus.MultiError
@@ -71,7 +80,7 @@ func (e *exporter) Gather() ([]*dto.MetricFamily, error) {
 	for _, t := range e.targets {
 		go func(target Target) {
 			defer wg.Done()
-			target.Collect(ctx, metricChan)
+			target.Collect(e.ctx, metricChan)
 		}(t)
 	}
 
