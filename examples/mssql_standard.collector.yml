@@ -60,7 +60,7 @@ metrics:
       WHERE counter_name = 'Errors/sec' AND instance_name = 'Kill Connection Errors'
 
   - metric_name: mssql_page_life_expectancy_seconds
-    type: counter
+    type: gauge
     help: 'The minimum number of seconds a page will stay in the buffer pool on this node without references.'
     values: [cntr_value]
     query: |
@@ -98,8 +98,8 @@ metrics:
       - db
     value_label: operation
     values:
-      - io_stall_read
-      - io_stall_write
+      - read
+      - write
     query_ref: io_stall
   - metric_name: mssql_io_stall_total_seconds
     type: counter
@@ -168,8 +168,8 @@ queries:
     query: |
       SELECT
         cast(DB_Name(a.database_id) as varchar) AS db,
-        sum(io_stall_read_ms) / 1000.0 AS io_stall_read,
-        sum(io_stall_write_ms) / 1000.0 AS io_stall_write,
+        sum(io_stall_read_ms) / 1000.0 AS read,
+        sum(io_stall_write_ms) / 1000.0 AS write,
         sum(io_stall) / 1000.0 AS io_stall
       FROM
         sys.dm_io_virtual_file_stats(null, null) a
