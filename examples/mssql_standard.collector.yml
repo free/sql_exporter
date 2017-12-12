@@ -100,7 +100,7 @@ metrics:
     values:
       - read
       - write
-    query_ref: io_stall
+    query_ref: mssql_io_stall
   - metric_name: mssql_io_stall_total_seconds
     type: counter
     help: 'Total stall time in seconds per database.'
@@ -108,7 +108,7 @@ metrics:
       - db
     values:
       - io_stall
-    query_ref: io_stall
+    query_ref: mssql_io_stall
 
   #
   # Collected from sys.dm_os_process_memory
@@ -117,25 +117,25 @@ metrics:
     type: gauge
     help: 'SQL Server resident memory size (AKA working set).'
     values: [resident_memory_bytes]
-    query_ref: process_memory
+    query_ref: mssql_process_memory
 
   - metric_name: mssql_virtual_memory_bytes
     type: gauge
     help: 'SQL Server committed virtual memory size.'
     values: [virtual_memory_bytes]
-    query_ref: process_memory
+    query_ref: mssql_process_memory
 
   - metric_name: mssql_memory_utilization_percentage
     type: gauge
     help: 'The percentage of committed memory that is in the working set.'
     values: [memory_utilization_percentage]
-    query_ref: process_memory
+    query_ref: mssql_process_memory
 
   - metric_name: mssql_page_fault_count
     type: counter
     help: 'The number of page faults that were incurred by the SQL Server process.'
     values: [page_fault_count]
-    query_ref: process_memory
+    query_ref: mssql_process_memory
 
   #
   # Collected from sys.dm_os_sys_memory
@@ -164,12 +164,12 @@ metrics:
 
 queries:
   # Populates `mssql_io_stall` and `mssql_io_stall_total`
-  - query_name: io_stall
+  - query_name: mssql_io_stall
     query: |
       SELECT
-        cast(DB_Name(a.database_id) as varchar) AS db,
-        sum(io_stall_read_ms) / 1000.0 AS read,
-        sum(io_stall_write_ms) / 1000.0 AS write,
+        cast(DB_Name(a.database_id) as varchar) AS [db],
+        sum(io_stall_read_ms) / 1000.0 AS [read],
+        sum(io_stall_write_ms) / 1000.0 AS [write],
         sum(io_stall) / 1000.0 AS io_stall
       FROM
         sys.dm_io_virtual_file_stats(null, null) a
@@ -178,7 +178,7 @@ queries:
 
   # Populates `mssql_resident_memory_bytes`, `mssql_virtual_memory_bytes`, `mssql_memory_utilization_percentage` and
   # `mssql_page_fault_count`.
-  - query_name: process_memory
+  - query_name: mssql_process_memory
     query: |
       SELECT
         physical_memory_in_use_kb * 1024 AS resident_memory_bytes,
