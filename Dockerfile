@@ -1,6 +1,14 @@
-FROM alpine
-EXPOSE 9399
-RUN mkdir /app
-WORKDIR /app
-COPY sql_exporter /app
-ENTRYPOINT ["./sql_exporter"]
+FROM quay.io/prometheus/golang-builder as builder
+
+ADD .   /go/src/github.com/free/sql_exporter
+WORKDIR /go/src/github.com/free/sql_exporter
+
+RUN make
+
+FROM        quay.io/prometheus/busybox:glibc
+MAINTAINER  The Prometheus Authors <prometheus-developers@googlegroups.com>
+
+COPY --from=builder /go/src/github.com/free/sql_exporter/sql_exporter  /bin/sql_exporter
+
+EXPOSE      9399
+ENTRYPOINT  [ "/bin/sql_exporter" ]
