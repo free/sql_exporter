@@ -1,13 +1,11 @@
-It is not working yet !
-
-# Prometheus SQL Exporter [![Build Status](https://travis-ci.org/free/database_exporter.svg)](https://travis-ci.org/free/database_exporter) [![Go Report Card](https://goreportcard.com/badge/github.com/Corundex/database_exporter)](https://goreportcard.com/report/github.com/Corundex/database_exporter) [![GoDoc](https://godoc.org/github.com/Corundex/database_exporter?status.svg)](https://godoc.org/github.com/Corundex/database_exporter) [![Docker Pulls](https://img.shields.io/docker/pulls/githubfree/database_exporter.svg?maxAge=604800)](https://hub.docker.com/r/githubfree/database_exporter)
+# Prometheus Database Exporter [![Build Status](https://travis-ci.org/free/database_exporter.svg)](https://travis-ci.org/free/database_exporter) [![Go Report Card](https://goreportcard.com/badge/github.com/Corundex/database_exporter)](https://goreportcard.com/report/github.com/Corundex/database_exporter) [![GoDoc](https://godoc.org/github.com/Corundex/database_exporter?status.svg)](https://godoc.org/github.com/Corundex/database_exporter) [![Docker Pulls](https://img.shields.io/docker/pulls/githubfree/database_exporter.svg?maxAge=604800)](https://hub.docker.com/r/githubfree/database_exporter)
 
 Database agnostic SQL exporter for [Prometheus](https://prometheus.io).
 
 ## Overview
 
-SQL Exporter is a configuration driven exporter that exposes metrics gathered from DBMSs, for use by the Prometheus
-monitoring system. Out of the box, it provides support for MySQL, PostgreSQL, Microsoft SQL Server and Clickhouse, but
+Database Exporter is a configuration driven exporter that exposes metrics gathered from DBMSs, for use by the Prometheus
+monitoring system. Out of the box, it provides support for MySQL, PostgreSQL, Oracle DB, Microsoft SQL Server and Clickhouse, but
 any DBMS for which a Go driver is available may be monitored after rebuilding the binary with the DBMS driver included.
 
 The collected metrics and the queries that produce them are entirely configuration defined. SQL queries are grouped into
@@ -22,8 +20,8 @@ metrics when queried more frequently than the configured interval.
 
 ## Usage
 
-Get Prometheus SQL Exporter, either as a [packaged release](https://github.com/Corundex/database_exporter/releases/latest), as a [Docker image](https://hub.docker.com/r/githubfree/database_exporter) or
-build it yourself:
+Get Prometheus Database Exporter [packaged release](https://github.com/Corundex/database_exporter/releases/latest)
+or build it yourself:
 
 ```
 $ go install github.com/Corundex/database_exporter/cmd/database_exporter
@@ -41,7 +39,7 @@ Use the `-help` flag to get help information.
 $ ./database_exporter -help
 Usage of ./database_exporter:
   -config.file string
-      SQL Exporter configuration file name. (default "database_exporter.yml")
+      Database Exporter configuration file name. (default "database_exporter.yml", you can use sample oracle_exporter.yml, postgres_exporter.yml, mssql_exporter.yml or mysql_exporter.yml)
   -web.listen-address string
       Address to listen on for web interface and telemetry. (default ":9399")
   -web.metrics-path string
@@ -51,14 +49,13 @@ Usage of ./database_exporter:
 
 ## Configuration
 
-SQL Exporter is deployed alongside the DB server it collects metrics from. If both the exporter and the DB
+Database Exporter is deployed alongside the DB server it collects metrics from. If both the exporter and the DB
 server are on the same host, they will share the same failure domain: they will usually be either both up and running
 or both down. When the database is unreachable, `/metrics` responds with HTTP code 500 Internal Server Error, causing
 Prometheus to record `up=0` for that scrape. Only metrics defined by collectors are exported on the `/metrics` endpoint.
-SQL Exporter process metrics are exported at `/database_exporter_metrics`.
+Database Exporter process metrics are exported at `/database_exporter_metrics`.
 
-The configuration examples listed here only cover the core elements. For a comprehensive and comprehensively documented
-configuration file check out 
+The configuration examples listed here only cover some basic element.
 [`documentation/database_exporter.yml`](https://github.com/Corundex/database_exporter/tree/master/documentation/database_exporter.yml).
 You will find ready to use "standard" DBMS-specific collector definitions in the
 [`examples`](https://github.com/Corundex/database_exporter/tree/master/examples) directory. You may contribute your own collector
@@ -130,8 +127,8 @@ To keep things simple and yet allow fully configurable database connections to b
 Go `sql` library does not allow for automatic driver selection based on the DSN (i.e. an explicit driver name must be
 specified) SQL Exporter uses the schema part of the DSN (the part before the `://`) to determine which driver to use.
 
-Unfortunately, while this works out of the box with the [MS SQL Server](https://github.com/denisenkom/go-mssqldb) and
-[PostgreSQL](github.com/lib/pq) drivers, the [MySQL driver](github.com/go-sql-driver/mysql) DSNs format does not include
+While this works out of the box with the [MS SQL Server](https://github.com/denisenkom/go-mssqldb), 
+[PostgreSQL](github.com/lib/pq) and [Oracle OCI8](github.com/mattn/go-oci8) drivers, the [MySQL driver](github.com/go-sql-driver/mysql) DSNs format does not include
 a schema and the [Clickhouse](github.com/kshvakov/clickhouse) one uses `tcp://`. So SQL Exporter does a bit of massaging
 of DSNs for the latter two drivers in order for this to work:
 
@@ -145,9 +142,8 @@ Clickhouse | `clickhouse://host:port?username=user&password=passw&database=dbnam
 
 ## Why It Exists
 
-SQL Exporter started off as an exporter for Microsoft SQL Server, for which no reliable exporters exist. But what is
-the point of a configuration driven SQL exporter, if you're going to use it along with 2 more exporters with wholly
-different world views and configurations, because you also have MySQL and PostgreSQL instances to monitor?
+Database exporter started from [SQL Exporter] (github.com/free/sql_exporter) which started off as an exporter for Microsoft SQL Server, for which no reliable exporters exist. But what is the point of a configuration driven SQL exporter, if you're going to use it along with 2 more exporters with wholly
+different world views and configurations, because you also have MySQL, Oracle and PostgreSQL instances to monitor?
 
 A couple of alternative database agnostic exporters are available -- https://github.com/justwatchcom/database_exporter and
 https://github.com/chop-dbhi/prometheus-sql -- but they both do the collection at fixed intervals, independent of
@@ -155,7 +151,3 @@ Prometheus scrapes. This is partly a philosophical issue, but practical issues a
 jitter; duplicate data points; or collected but not scraped data points. The control they provide over which labels get
 applied is limited, and the base label set spammy. And finally, configurations are not easily reused without
 copy-pasting and editing across jobs and instances.
-
-## Why this fork exists
-
-I just need this wonderful flexible exporter for oracle database - working on it...
