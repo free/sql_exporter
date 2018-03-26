@@ -1,0 +1,20 @@
+# A collector defining standard metrics for MySQL Server.
+#
+#
+
+collector_name: mysql_metrics
+
+# Similar to global.min_interval, but applies to the queries defined by this collector only.
+#min_interval: 0s
+
+metrics:
+  - metric_name: mysql_user_connections
+    type: gauge
+    help: 'Current number of connection per user.'
+    values:
+      - current_connections
+    key_labels:
+      - user
+    query: |
+      select user, current_connections from performance_schema.users where user is not null
+

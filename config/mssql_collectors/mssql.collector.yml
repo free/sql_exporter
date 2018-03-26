@@ -5,7 +5,7 @@
 #   GRANT VIEW ANY DEFINITION TO
 #   GRANT VIEW SERVER STATE TO
 #
-collector_name: mssql_standard
+collector_name: mssql_metrics
 
 # Similar to global.min_interval, but applies to the queries defined by this collector only.
 #min_interval: 0s

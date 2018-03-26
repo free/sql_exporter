@@ -1,0 +1,21 @@
+# A collector defining standard metrics for PostreSQL Server.
+#
+#
+
+collector_name: postgres_metrics
+
+# Similar to global.min_interval, but applies to the queries defined by this collector only.
+#min_interval: 0s
+
+metrics:
+  - metric_name: postgres_client_connections
+    type: gauge
+    help: 'Number of connected clients.'
+    values:
+      - value
+    key_labels:
+      - usename
+      - datname
+    query: |
+      SELECT usename, datname, count(1) as value FROM pg_stat_activity group by usename, datname
+

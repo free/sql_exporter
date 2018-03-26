@@ -138,6 +138,7 @@ of DSNs for the latter two drivers in order for this to work:
 DB | SQL Exporter expected DSN | Driver sees
 :---|:---|:---
 MySQL | `mysql://user:passw@protocol(host:port)/dbname` | `user:passw@protocol(host:port)/dbname`
+Oracle | `oracle://user:password@host:port/sid` | `user:password@host:port/sid`
 PostgreSQL | `postgres://user:passw@host:port/dbname` | *unchanged*
 SQL Server | `sqlserver://user:passw@host:port/instance` | *unchanged*
 Clickhouse | `clickhouse://host:port?username=user&password=passw&database=dbname` | `tcp://host:port?username=user&password=passw&database=dbname`

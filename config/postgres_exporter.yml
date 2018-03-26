@@ -13,13 +13,13 @@ global:
 
 # The target to monitor and the collectors to execute on it.
 target:
-  # Data source name always has a URI schema that matches the driver name. In some cases (e.g. MySQL)
+  # Data source name always has a URI schema that matches the driver name. In some cases (e.g. oracle)
   # the schema gets dropped or replaced to match the driver expected DSN format.
-  data_source_name: 'sqlserver://prom_user:prom_password@dbserver1.example.com:1433'
+  data_source_name: 'postgres://username:password@host:port/dbname'
 
   # Collectors (referenced by name) to execute on the target.
-  collectors: [mssql_standard]
+  collectors: [postgres_metrics]
 
 # Collector files specifies a list of globs. One collector definition is read from each matching file.
 collector_files: 
-  - "*.collector.yml"
+  - "./postgres_collectors/*.collector.yml"

@@ -1,0 +1,20 @@
+# A collector defining standard metrics for Oracle Database Server.
+#
+#
+
+collector_name: oracle_metrics
+
+# Similar to global.min_interval, but applies to the queries defined by this collector only.
+#min_interval: 0s
+
+metrics:
+  - metric_name: oracle_tablespace_size
+    type: gauge
+    help: 'Size of oracle db tablespaces.'
+    values:
+      - value
+    key_labels:
+      - tablespace_name
+    query: |
+      select tablespace_name, sum(bytes) value from dba_data_files group by tablespace_name
+
