@@ -152,3 +152,7 @@ Prometheus scrapes. This is partly a philosophical issue, but practical issues a
 jitter; duplicate data points; or collected but not scraped data points. The control they provide over which labels get
 applied is limited, and the base label set spammy. And finally, configurations are not easily reused without
 copy-pasting and editing across jobs and instances.
+
+## Why this fork exists
+
+I just need this wonderful flexible exporter for oracle database - working on it...

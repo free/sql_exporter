@@ -43,6 +43,7 @@ import (
 // Using the https://github.com/kshvakov/clickhouse driver, DSN format (passed to the driver with the`clickhouse://`
 // prefix replaced with `tcp://`):
 //   clickhouse://host:port?username=username&password=password&database=dbname&param=value
+
 func OpenConnection(ctx context.Context, logContext, dsn string, maxConns, maxIdleConns int) (*sql.DB, error) {
 	// Extract driver name from DSN.
 	idx := strings.Index(dsn, "://")
