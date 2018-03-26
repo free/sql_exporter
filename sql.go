@@ -45,6 +45,22 @@ import (
 // Using the https://github.com/kshvakov/clickhouse driver, DSN format (passed to the driver with the`clickhouse://`
 // prefix replaced with `tcp://`):
 //   clickhouse://host:port?username=username&password=password&database=dbname&param=value
+//
+// Oracle
+//
+// Using the https://github.com/mattn/go-oci8 driver, DSN format (passed to the driver with the `oracle://` prefix):
+//   oracle://user:password@host:port/sid?param1=value1&param2=value2
+//
+// Currently the parameters supported is:
+// 1 'loc' which sets the timezone to read times in as and to marshal to when writing times to Oracle date,
+// 2 'isolation' =READONLY,SERIALIZABLE,DEFAULT
+// 3 'prefetch_rows'
+// 4 'prefetch_memory'
+// 5 'questionph' =YES,NO,TRUE,FALSE enable question-mark placeholders, default to false
+//
+// don't forget to install Oracle instant client and set variables pointing to the libs:
+// export LD_LIBRARY_PATH=..../instantclient_12_2
+// export PKG_CONFIG_PATH=..../instantclient_12_2
 
 func OpenConnection(ctx context.Context, logContext, dsn string, maxConns, maxIdleConns int) (*sql.DB, error) {
 	// Extract driver name from DSN.
@@ -60,6 +76,8 @@ func OpenConnection(ctx context.Context, logContext, dsn string, maxConns, maxId
 		dsn = strings.TrimPrefix(dsn, "mysql://")
 	case "clickhouse":
 		dsn = "tcp://" + strings.TrimPrefix(dsn, "clickhouse://")
+	case "oracle":
+		dsn = strings.TrimPrefix(dsn, "oracle://")
 	}
 
 	// Open the DB handle in a separate goroutine so we can terminate early if the context closes.
