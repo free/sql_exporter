@@ -1,12 +1,12 @@
-package sql_exporter
+package database_exporter
 
 import (
 	"context"
 	"database/sql"
 	"fmt"
 
-	"github.com/Corundex/sql_exporter/config"
-	"github.com/Corundex/sql_exporter/errors"
+	"github.com/Corundex/database_exporter/config"
+	"github.com/Corundex/database_exporter/errors"
 	log "github.com/golang/glog"
 )
 

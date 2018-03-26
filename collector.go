@@ -1,4 +1,4 @@
-package sql_exporter
+package database_exporter
 
 import (
 	"context"
@@ -7,8 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Corundex/sql_exporter/config"
-	"github.com/Corundex/sql_exporter/errors"
+	"github.com/Corundex/database_exporter/config"
+	"github.com/Corundex/database_exporter/errors"
+
 	log "github.com/golang/glog"
 	dto "github.com/prometheus/client_model/go"
 )

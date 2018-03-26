@@ -5,11 +5,11 @@ import (
 	"html/template"
 	"net/http"
 
-	"github.com/Corundex/sql_exporter"
+	"github.com/Corundex/database_exporter"
 )
 
 const (
-	docsUrl   = "https://github.com/Corundex/sql_exporter#readme"
+	docsUrl   = "https://github.com/Corundex/database_exporter#readme"
 	templates = `
     {{ define "page" -}}
       <html>
@@ -94,7 +94,7 @@ func HomeHandlerFunc(metricsPath string) func(http.ResponseWriter, *http.Request
 }
 
 // ConfigHandlerFunc is the HTTP handler for the `/config` page. It outputs the configuration marshaled in YAML format.
-func ConfigHandlerFunc(metricsPath string, exporter sql_exporter.Exporter) func(http.ResponseWriter, *http.Request) {
+func ConfigHandlerFunc(metricsPath string, exporter database_exporter.Exporter) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		config, err := exporter.Config().YAML()
 		if err != nil {

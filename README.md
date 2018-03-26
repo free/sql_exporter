@@ -1,4 +1,4 @@
-# Prometheus SQL Exporter [![Build Status](https://travis-ci.org/free/sql_exporter.svg)](https://travis-ci.org/free/sql_exporter) [![Go Report Card](https://goreportcard.com/badge/github.com/Corundex/sql_exporter)](https://goreportcard.com/report/github.com/Corundex/sql_exporter) [![GoDoc](https://godoc.org/github.com/Corundex/sql_exporter?status.svg)](https://godoc.org/github.com/Corundex/sql_exporter) [![Docker Pulls](https://img.shields.io/docker/pulls/githubfree/sql_exporter.svg?maxAge=604800)](https://hub.docker.com/r/githubfree/sql_exporter)
+# Prometheus SQL Exporter [![Build Status](https://travis-ci.org/free/database_exporter.svg)](https://travis-ci.org/free/database_exporter) [![Go Report Card](https://goreportcard.com/badge/github.com/Corundex/database_exporter)](https://goreportcard.com/report/github.com/Corundex/database_exporter) [![GoDoc](https://godoc.org/github.com/Corundex/database_exporter?status.svg)](https://godoc.org/github.com/Corundex/database_exporter) [![Docker Pulls](https://img.shields.io/docker/pulls/githubfree/database_exporter.svg?maxAge=604800)](https://hub.docker.com/r/githubfree/database_exporter)
 
 Database agnostic SQL exporter for [Prometheus](https://prometheus.io).
 
@@ -20,26 +20,26 @@ metrics when queried more frequently than the configured interval.
 
 ## Usage
 
-Get Prometheus SQL Exporter, either as a [packaged release](https://github.com/Corundex/sql_exporter/releases/latest), as a [Docker image](https://hub.docker.com/r/githubfree/sql_exporter) or
+Get Prometheus SQL Exporter, either as a [packaged release](https://github.com/Corundex/database_exporter/releases/latest), as a [Docker image](https://hub.docker.com/r/githubfree/database_exporter) or
 build it yourself:
 
 ```
-$ go install github.com/Corundex/sql_exporter/cmd/sql_exporter
+$ go install github.com/Corundex/database_exporter/cmd/database_exporter
 ```
 
 then run it from the command line:
 
 ```
-$ sql_exporter
+$ database_exporter
 ```
 
 Use the `-help` flag to get help information.
 
 ```
-$ ./sql_exporter -help
-Usage of ./sql_exporter:
+$ ./database_exporter -help
+Usage of ./database_exporter:
   -config.file string
-      SQL Exporter configuration file name. (default "sql_exporter.yml")
+      SQL Exporter configuration file name. (default "database_exporter.yml")
   -web.listen-address string
       Address to listen on for web interface and telemetry. (default ":9399")
   -web.metrics-path string
@@ -53,17 +53,17 @@ SQL Exporter is deployed alongside the DB server it collects metrics from. If bo
 server are on the same host, they will share the same failure domain: they will usually be either both up and running
 or both down. When the database is unreachable, `/metrics` responds with HTTP code 500 Internal Server Error, causing
 Prometheus to record `up=0` for that scrape. Only metrics defined by collectors are exported on the `/metrics` endpoint.
-SQL Exporter process metrics are exported at `/sql_exporter_metrics`.
+SQL Exporter process metrics are exported at `/database_exporter_metrics`.
 
 The configuration examples listed here only cover the core elements. For a comprehensive and comprehensively documented
 configuration file check out 
-[`documentation/sql_exporter.yml`](https://github.com/Corundex/sql_exporter/tree/master/documentation/sql_exporter.yml).
+[`documentation/database_exporter.yml`](https://github.com/Corundex/database_exporter/tree/master/documentation/database_exporter.yml).
 You will find ready to use "standard" DBMS-specific collector definitions in the
-[`examples`](https://github.com/Corundex/sql_exporter/tree/master/examples) directory. You may contribute your own collector
+[`examples`](https://github.com/Corundex/database_exporter/tree/master/examples) directory. You may contribute your own collector
 definitions and metric additions if you think they could be more widely useful, even if they are merely different takes
 on already covered DBMSs.
 
-**`./sql_exporter.yml`**
+**`./database_exporter.yml`**
 
 ```yaml
 # Global settings and defaults.
@@ -146,7 +146,7 @@ SQL Exporter started off as an exporter for Microsoft SQL Server, for which no r
 the point of a configuration driven SQL exporter, if you're going to use it along with 2 more exporters with wholly
 different world views and configurations, because you also have MySQL and PostgreSQL instances to monitor?
 
-A couple of alternative database agnostic exporters are available -- https://github.com/justwatchcom/sql_exporter and
+A couple of alternative database agnostic exporters are available -- https://github.com/justwatchcom/database_exporter and
 https://github.com/chop-dbhi/prometheus-sql -- but they both do the collection at fixed intervals, independent of
 Prometheus scrapes. This is partly a philosophical issue, but practical issues are not all that difficult to imagine:
 jitter; duplicate data points; or collected but not scraped data points. The control they provide over which labels get

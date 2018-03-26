@@ -1,16 +1,16 @@
 FROM quay.io/prometheus/golang-builder AS builder
 
-# Get sql_exporter
-ADD .   /go/src/github.com/Corundex/sql_exporter
-WORKDIR /go/src/github.com/Corundex/sql_exporter
+# Get database_exporter
+ADD .   /go/src/github.com/Corundex/database_exporter
+WORKDIR /go/src/github.com/Corundex/database_exporter
 
 # Do makefile
 RUN make
 
-# Make image and copy build sql_exporter
+# Make image and copy build database_exporter
 FROM        quay.io/prometheus/busybox:glibc
 MAINTAINER  The Prometheus Authors <prometheus-developers@googlegroups.com>
-COPY        --from=builder /go/src/github.com/Corundex/sql_exporter/sql_exporter  /bin/sql_exporter
+COPY        --from=builder /go/src/github.com/Corundex/database_exporter/database_exporter  /bin/database_exporter
 
 EXPOSE      9399
-ENTRYPOINT  [ "/bin/sql_exporter" ]
+ENTRYPOINT  [ "/bin/database_exporter" ]

@@ -1,4 +1,4 @@
-package sql_exporter
+package database_exporter
 
 import (
 	"context"

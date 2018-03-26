@@ -1,21 +1,21 @@
 go:
     cgo: false
 repository:
-    path: github.com/Corundex/sql_exporter
+    path: github.com/Corundex/database_exporter
 build:
     binaries:
-        - name: sql_exporter
-          path: ./cmd/sql_exporter
+        - name: database_exporter
+          path: ./bin/database_exporter
     flags: -a -tags netgo
-    ldflags: |
-      -X {{repoPath}}/vendor/github.com/prometheus/common/version.Version={{.Version}}
-      -X {{repoPath}}/vendor/github.com/prometheus/common/version.Revision={{.Revision}}
-      -X {{repoPath}}/vendor/github.com/prometheus/common/version.Branch={{.Branch}}
-      -X {{repoPath}}/vendor/github.com/prometheus/common/version.BuildUser={{user}}@{{host}}
-      -X {{repoPath}}/vendor/github.com/prometheus/common/version.BuildDate={{date "20060102-15:04:05"}}
+    #ldflags: |
+    #  -X {{repoPath}}/vendor/github.com/prometheus/common/version.Version={{.Version}}
+    #  -X {{repoPath}}/vendor/github.com/prometheus/common/version.Revision={{.Revision}}
+    #  -X {{repoPath}}/vendor/github.com/prometheus/common/version.Branch={{.Branch}}
+    #  -X {{repoPath}}/vendor/github.com/prometheus/common/version.BuildUser={{user}}@{{host}}
+    #  -X {{repoPath}}/vendor/github.com/prometheus/common/version.BuildDate={{date "20060102-15:04:05"}}
 tarball:
     files:
       - LICENSE
       - README.md
-      - examples/sql_exporter.yml
+      - examples/database_exporter.yml
       - examples/mssql_standard.collector.yml

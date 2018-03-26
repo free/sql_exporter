@@ -1,10 +1,10 @@
-package sql_exporter
+package database_exporter
 
 import (
 	"fmt"
 
-	"github.com/Corundex/sql_exporter/config"
-	"github.com/Corundex/sql_exporter/errors"
+	"github.com/Corundex/database_exporter/config"
+	"github.com/Corundex/database_exporter/errors"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
