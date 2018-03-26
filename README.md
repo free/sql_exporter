@@ -1,4 +1,4 @@
-# Prometheus SQL Exporter [![Build Status](https://travis-ci.org/free/sql_exporter.svg)](https://travis-ci.org/free/sql_exporter) [![Go Report Card](https://goreportcard.com/badge/github.com/free/sql_exporter)](https://goreportcard.com/report/github.com/free/sql_exporter) [![GoDoc](https://godoc.org/github.com/free/sql_exporter?status.svg)](https://godoc.org/github.com/free/sql_exporter) [![Docker Pulls](https://img.shields.io/docker/pulls/githubfree/sql_exporter.svg?maxAge=604800)](https://hub.docker.com/r/githubfree/sql_exporter)
+# Prometheus SQL Exporter [![Build Status](https://travis-ci.org/free/sql_exporter.svg)](https://travis-ci.org/free/sql_exporter) [![Go Report Card](https://goreportcard.com/badge/github.com/Corundex/sql_exporter)](https://goreportcard.com/report/github.com/Corundex/sql_exporter) [![GoDoc](https://godoc.org/github.com/Corundex/sql_exporter?status.svg)](https://godoc.org/github.com/Corundex/sql_exporter) [![Docker Pulls](https://img.shields.io/docker/pulls/githubfree/sql_exporter.svg?maxAge=604800)](https://hub.docker.com/r/githubfree/sql_exporter)
 
 Database agnostic SQL exporter for [Prometheus](https://prometheus.io).
 
@@ -20,11 +20,11 @@ metrics when queried more frequently than the configured interval.
 
 ## Usage
 
-Get Prometheus SQL Exporter, either as a [packaged release](https://github.com/free/sql_exporter/releases/latest), as a [Docker image](https://hub.docker.com/r/githubfree/sql_exporter) or
+Get Prometheus SQL Exporter, either as a [packaged release](https://github.com/Corundex/sql_exporter/releases/latest), as a [Docker image](https://hub.docker.com/r/githubfree/sql_exporter) or
 build it yourself:
 
 ```
-$ go install github.com/free/sql_exporter/cmd/sql_exporter
+$ go install github.com/Corundex/sql_exporter/cmd/sql_exporter
 ```
 
 then run it from the command line:
@@ -57,9 +57,9 @@ SQL Exporter process metrics are exported at `/sql_exporter_metrics`.
 
 The configuration examples listed here only cover the core elements. For a comprehensive and comprehensively documented
 configuration file check out 
-[`documentation/sql_exporter.yml`](https://github.com/free/sql_exporter/tree/master/documentation/sql_exporter.yml).
+[`documentation/sql_exporter.yml`](https://github.com/Corundex/sql_exporter/tree/master/documentation/sql_exporter.yml).
 You will find ready to use "standard" DBMS-specific collector definitions in the
-[`examples`](https://github.com/free/sql_exporter/tree/master/examples) directory. You may contribute your own collector
+[`examples`](https://github.com/Corundex/sql_exporter/tree/master/examples) directory. You may contribute your own collector
 definitions and metric additions if you think they could be more widely useful, even if they are merely different takes
 on already covered DBMSs.
 

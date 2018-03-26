@@ -7,12 +7,13 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/free/sql_exporter"
+	_ "net/http/pprof"
+
+	"github.com/Corundex/sql_exporter"
 	log "github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
-	_ "net/http/pprof"
 )
 
 func init() {

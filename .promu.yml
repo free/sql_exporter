@@ -1,7 +1,7 @@
 go:
     cgo: false
 repository:
-    path: github.com/free/sql_exporter
+    path: github.com/Corundex/sql_exporter
 build:
     binaries:
         - name: sql_exporter

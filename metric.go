@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/free/sql_exporter/config"
-	"github.com/free/sql_exporter/errors"
+	"github.com/Corundex/sql_exporter/config"
+	"github.com/Corundex/sql_exporter/errors"
 	"github.com/golang/protobuf/proto"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
