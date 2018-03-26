@@ -5,7 +5,7 @@ repository:
 build:
     binaries:
         - name: database_exporter
-          path: ./bin/database_exporter
+          path: ./
     flags: -a -tags netgo
     #ldflags: |
     #  -X {{repoPath}}/vendor/github.com/prometheus/common/version.Version={{.Version}}

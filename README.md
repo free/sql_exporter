@@ -1,3 +1,5 @@
+It is not working yet !
+
 # Prometheus SQL Exporter [![Build Status](https://travis-ci.org/free/database_exporter.svg)](https://travis-ci.org/free/database_exporter) [![Go Report Card](https://goreportcard.com/badge/github.com/Corundex/database_exporter)](https://goreportcard.com/report/github.com/Corundex/database_exporter) [![GoDoc](https://godoc.org/github.com/Corundex/database_exporter?status.svg)](https://godoc.org/github.com/Corundex/database_exporter) [![Docker Pulls](https://img.shields.io/docker/pulls/githubfree/database_exporter.svg?maxAge=604800)](https://hub.docker.com/r/githubfree/database_exporter)
 
 Database agnostic SQL exporter for [Prometheus](https://prometheus.io).
