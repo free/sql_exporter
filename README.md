@@ -1,4 +1,4 @@
-# Prometheus Database Exporter [![Build Status](https://travis-ci.org/free/database_exporter.svg)](https://travis-ci.org/free/database_exporter) [![Go Report Card](https://goreportcard.com/badge/github.com/Corundex/database_exporter)](https://goreportcard.com/report/github.com/Corundex/database_exporter) [![GoDoc](https://godoc.org/github.com/Corundex/database_exporter?status.svg)](https://godoc.org/github.com/Corundex/database_exporter) [![Docker Pulls](https://img.shields.io/docker/pulls/githubfree/database_exporter.svg?maxAge=604800)](https://hub.docker.com/r/githubfree/database_exporter)
+# Prometheus Database Exporter [![Build Status](https://travis-ci.org/free/database_exporter.svg)](https://travis-ci.org/Corundex/database_exporter) [![Go Report Card](https://goreportcard.com/badge/github.com/Corundex/database_exporter)](https://goreportcard.com/report/github.com/Corundex/database_exporter) [![GoDoc](https://godoc.org/github.com/Corundex/database_exporter?status.svg)](https://godoc.org/github.com/Corundex/database_exporter) [![Docker Pulls](https://img.shields.io/docker/pulls/githubfree/database_exporter.svg?maxAge=604800)](https://hub.docker.com/r/githubfree/database_exporter)
 
 Database agnostic SQL exporter for [Prometheus](https://prometheus.io).
 
@@ -142,7 +142,7 @@ Clickhouse | `clickhouse://host:port?username=user&password=passw&database=dbnam
 
 ## Why It Exists
 
-Database exporter started from [SQL Exporter] (github.com/free/sql_exporter) which started off as an exporter for Microsoft SQL Server, for which no reliable exporters exist. But what is the point of a configuration driven SQL exporter, if you're going to use it along with 2 more exporters with wholly
+Database exporter started from [SQL Exporter](github.com/free/sql_exporter) which started off as an exporter for Microsoft SQL Server, for which no reliable exporters exist. But what is the point of a configuration driven SQL exporter, if you're going to use it along with 2 more exporters with wholly
 different world views and configurations, because you also have MySQL, Oracle and PostgreSQL instances to monitor?
 
 A couple of alternative database agnostic exporters are available -- https://github.com/justwatchcom/database_exporter and
