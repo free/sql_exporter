@@ -3,8 +3,8 @@ package database_exporter
 import (
 	"fmt"
 
-	"github.com/Corundex/database_exporter/config"
-	"github.com/Corundex/database_exporter/errors"
+	"github.com/Corundex/database_exporter/libs/config"
+	"github.com/Corundex/database_exporter/libs/errors"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

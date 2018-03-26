@@ -48,7 +48,8 @@ import (
 //
 // Oracle
 //
-// Using the https://github.com/mattn/go-oci8 driver, DSN format (passed to the driver with the `oracle://` prefix):
+// Using the https://github.com/mattn/go-oci8 driver, DSN format (passed to the driver with the `oci8://` or `oracle://`` prefix):
+//   oci8://user:password@host:port/sid?param1=value1&param2=value2
 //   oracle://user:password@host:port/sid?param1=value1&param2=value2
 //
 // Currently the parameters supported is:
@@ -58,15 +59,15 @@ import (
 // 4 'prefetch_memory'
 // 5 'questionph' =YES,NO,TRUE,FALSE enable question-mark placeholders, default to false
 //
-// don't forget to install Oracle instant client and set variables pointing to the libs:
+// don't forget to install Oracle instant client and set variables pointing to the installed libs:
 // export LD_LIBRARY_PATH=..../instantclient_12_2
 // export PKG_CONFIG_PATH=..../instantclient_12_2
-
+//
 func OpenConnection(ctx context.Context, logContext, dsn string, maxConns, maxIdleConns int) (*sql.DB, error) {
 	// Extract driver name from DSN.
 	idx := strings.Index(dsn, "://")
 	if idx == -1 {
-		return nil, fmt.Errorf("missing driver in data source name. Expected format `<driver>://<dsn>`.")
+		return nil, fmt.Errorf("missing driver in data source name. expected format `<driver>://<dsn>`")
 	}
 	driver := dsn[:idx]
 
@@ -76,8 +77,11 @@ func OpenConnection(ctx context.Context, logContext, dsn string, maxConns, maxId
 		dsn = strings.TrimPrefix(dsn, "mysql://")
 	case "clickhouse":
 		dsn = "tcp://" + strings.TrimPrefix(dsn, "clickhouse://")
+	case "oci8":
+		dsn = strings.TrimPrefix(dsn, "oci8://")
 	case "oracle":
 		dsn = strings.TrimPrefix(dsn, "oracle://")
+		driver = "oci8"
 	}
 
 	// Open the DB handle in a separate goroutine so we can terminate early if the context closes.

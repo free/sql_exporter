@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Corundex/database_exporter/config"
-	"github.com/Corundex/database_exporter/errors"
+	"github.com/Corundex/database_exporter/libs/config"
+	"github.com/Corundex/database_exporter/libs/errors"
 	"github.com/golang/protobuf/proto"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
