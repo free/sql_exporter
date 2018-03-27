@@ -42,7 +42,7 @@ Usage of ./database_exporter:
   -config.file string
       Database Exporter configuration file name. (default "database_exporter.yml", you can use sample oracle_exporter.yml, postgres_exporter.yml, mssql_exporter.yml or mysql_exporter.yml)
   -web.listen-address string
-      Address to listen on for web interface and telemetry. (default ":9399")
+      Address to listen on for web interface and telemetry. (default ":9285")
   -web.metrics-path string
       Path under which to expose metrics. (default "/metrics")
   [...]
