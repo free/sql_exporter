@@ -32,13 +32,13 @@ $$ go install github.com/Corundex/database_exporter/cmd/database_exporter
 then run it from the command line:
 
 ```bash
-&#0024; database_exporter
+$ database_exporter
 ```
 
 Use the `-help` flag to get help information.
 
 ```bash
-&#0024; ./database_exporter -help
+$ ./database_exporter -help
 ```
 
 Usage of ./database_exporter:
