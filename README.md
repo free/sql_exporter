@@ -128,9 +128,9 @@ To keep things simple and yet allow fully configurable database connections to b
 Go `sql` library does not allow for automatic driver selection based on the DSN (i.e. an explicit driver name must be
 specified) SQL Exporter uses the schema part of the DSN (the part before the `://`) to determine which driver to use.
 
-While this works out of the box with the [MS SQL Server](https://github.com/denisenkom/go-mssqldb), 
-[PostgreSQL](github.com/lib/pq) and [Oracle OCI8](github.com/mattn/go-oci8) drivers, the [MySQL driver](github.com/go-sql-driver/mysql) DSNs format does not include
-a schema and the [Clickhouse](github.com/kshvakov/clickhouse) one uses `tcp://`. So SQL Exporter does a bit of massaging
+While this works out of the box with the [MS SQL Server](https://github.com/denisenkom/go-mssqldb) and
+[PostgreSQL](https://github.com/lib/pq) drivers, [Oracle OCI8](https://github.com/mattn/go-oci8) and [MySQL driver](https://github.com/go-sql-driver/mysql) DSNs format does not include
+a schema and the [Clickhouse](https://github.com/kshvakov/clickhouse) one uses `tcp://`. So SQL Exporter does a bit of massaging
 of DSNs for the latter two drivers in order for this to work:
 
 DB | SQL Exporter expected DSN | Driver sees
@@ -143,7 +143,7 @@ Clickhouse | `clickhouse://host:port?username=user&password=passw&database=dbnam
 
 ## Why It Exists
 
-Database exporter started from [SQL Exporter](github.com/free/sql_exporter) which started off as an exporter for Microsoft SQL Server, for which no reliable exporters exist. But what is the point of a configuration driven SQL exporter, if you're going to use it along with 2 more exporters with wholly
+Database exporter started from [SQL Exporter](https://github.com/free/sql_exporter) which started off as an exporter for Microsoft SQL Server, for which no reliable exporters exist. But what is the point of a configuration driven SQL exporter, if you're going to use it along with 2 more exporters with wholly
 different world views and configurations, because you also have MySQL, Oracle and PostgreSQL instances to monitor?
 
 A couple of alternative database agnostic exporters are available -- https://github.com/justwatchcom/database_exporter and

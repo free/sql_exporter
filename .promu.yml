@@ -17,5 +17,5 @@ tarball:
     files:
       - LICENSE
       - README.md
-      - examples/database_exporter.yml
-      - examples/mssql_standard.collector.yml
+      - bin/*
+      - config/*
