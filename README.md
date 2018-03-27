@@ -26,7 +26,7 @@ Get Prometheus Database Exporter [packaged release](https://github.com/Corundex/
 or build it yourself:
 
 ```bash
-$$ go install github.com/Corundex/database_exporter/cmd/database_exporter
+go install github.com/Corundex/database_exporter/cmd/database_exporter
 ```
 
 then run it from the command line:
