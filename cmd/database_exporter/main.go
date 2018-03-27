@@ -28,7 +28,7 @@ func main() {
 
 	var (
 		showVersion   = flag.Bool("version", false, "Print version information.")
-		listenAddress = flag.String("web.listen-address", ":9399", "Address to listen on for web interface and telemetry.")
+		listenAddress = flag.String("web.listen-address", ":9285", "Address to listen on for web interface and telemetry.")
 		metricsPath   = flag.String("web.metrics-path", "/metrics", "Path under which to expose metrics.")
 		configFile    = flag.String("config.file", "database_exporter.yml", "SQL Exporter configuration file name.")
 	)
