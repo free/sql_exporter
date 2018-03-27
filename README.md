@@ -26,20 +26,24 @@ Get Prometheus Database Exporter [packaged release](https://github.com/Corundex/
 or build it yourself:
 
 ```bash
-\$ go install github.com/Corundex/database_exporter/cmd/database_exporter
+$$ go install github.com/Corundex/database_exporter/cmd/database_exporter
 ```
 
 then run it from the command line:
 
 ```bash
-\$ database_exporter
+&#0024; database_exporter
 ```
 
 Use the `-help` flag to get help information.
 
 ```bash
-$ ./database_exporter -help
+&#0024; ./database_exporter -help
+```
+
 Usage of ./database_exporter:
+
+```yaml
   -config.file string
       Database Exporter configuration file name. (default "database_exporter.yml", you can use sample oracle_exporter.yml, postgres_exporter.yml, mssql_exporter.yml or mysql_exporter.yml)
   -web.listen-address string
