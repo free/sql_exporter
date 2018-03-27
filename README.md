@@ -1,4 +1,5 @@
-# Prometheus Database Exporter 
+# Prometheus Database Exporter
+
 [![Build Status](https://travis-ci.org/free/database_exporter.svg)](https://travis-ci.org/Corundex/database_exporter) [![Go Report Card](https://goreportcard.com/badge/github.com/Corundex/database_exporter)](https://goreportcard.com/report/github.com/Corundex/database_exporter) [![GoDoc](https://godoc.org/github.com/Corundex/database_exporter?status.svg)](https://godoc.org/github.com/Corundex/database_exporter) [![Docker Pulls](https://img.shields.io/docker/pulls/githubfree/database_exporter.svg?maxAge=604800)](https://hub.docker.com/r/githubfree/database_exporter)
 
 Database agnostic SQL exporter for [Prometheus](https://prometheus.io).
@@ -24,19 +25,19 @@ metrics when queried more frequently than the configured interval.
 Get Prometheus Database Exporter [packaged release](https://github.com/Corundex/database_exporter/releases/latest)
 or build it yourself:
 
-```
-$ go install github.com/Corundex/database_exporter/cmd/database_exporter
+```bash
+\$ go install github.com/Corundex/database_exporter/cmd/database_exporter
 ```
 
 then run it from the command line:
 
-```
-$ database_exporter
+```bash
+\$ database_exporter
 ```
 
 Use the `-help` flag to get help information.
 
-```
+```bash
 $ ./database_exporter -help
 Usage of ./database_exporter:
   -config.file string
@@ -89,7 +90,7 @@ target:
   collectors: [pricing_data_freshness]
 
 # Collector definition files.
-collector_files: 
+collector_files:
   - "*.collector.yml"
 ```
 
@@ -146,8 +147,10 @@ Clickhouse | `clickhouse://host:port?username=user&password=passw&database=dbnam
 Database exporter started from [SQL Exporter](https://github.com/free/sql_exporter) which started off as an exporter for Microsoft SQL Server, for which no reliable exporters exist. But what is the point of a configuration driven SQL exporter, if you're going to use it along with 2 more exporters with wholly
 different world views and configurations, because you also have MySQL, Oracle and PostgreSQL instances to monitor?
 
-A couple of alternative database agnostic exporters are available -- https://github.com/justwatchcom/database_exporter and
-https://github.com/chop-dbhi/prometheus-sql -- but they both do the collection at fixed intervals, independent of
+A couple of alternative database agnostic exporters are available:
+[database_exporter](https://github.com/justwatchcom/database_exporter)
+[prometheus-sql](https://github.com/chop-dbhi/prometheus-sql)
+but they both do the collection at fixed intervals, independent of
 Prometheus scrapes. This is partly a philosophical issue, but practical issues are not all that difficult to imagine:
 jitter; duplicate data points; or collected but not scraped data points. The control they provide over which labels get
 applied is limited, and the base label set spammy. And finally, configurations are not easily reused without
