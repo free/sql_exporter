@@ -1,4 +1,5 @@
-// minimal set
+// minimal set for autobilder only
+// use Oracle developer library to build the project!
 
 typedef   signed int       sword;
 typedef unsigned char      text;
