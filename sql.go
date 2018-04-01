@@ -13,6 +13,7 @@ import (
 	_ "github.com/kshvakov/clickhouse"   // register the ClickHouse driver
 	_ "github.com/lib/pq"                // register the PostgreSQL driver
 	_ "github.com/mattn/go-oci8"         // register the Oracle DB driver
+	_ "github.com/mattn/go-sqlite3"      // register the SQLite3 driver
 )
 
 // OpenConnection extracts the driver name from the DSN (expected as the URI scheme), adjusts it where necessary (e.g.
@@ -63,6 +64,13 @@ import (
 // export LD_LIBRARY_PATH=..../instantclient_12_2
 // export PKG_CONFIG_PATH=..../instantclient_12_2
 //
+// SQLite3
+//
+// Using the github.com/mattn/go-sqlite3 driver, DSN format (passed to the driver with the `sqlite3://`` prefix):
+//   sqlite3://file:base.sqlite?param1=value1&param2=value2
+//
+//   f.e sqlite3://file:mybase.db?cache=shared&mode=rwc
+//
 func OpenConnection(ctx context.Context, logContext, dsn string, maxConns, maxIdleConns int) (*sql.DB, error) {
 	// Extract driver name from DSN.
 	idx := strings.Index(dsn, "://")
@@ -82,6 +90,8 @@ func OpenConnection(ctx context.Context, logContext, dsn string, maxConns, maxId
 	case "oracle":
 		dsn = strings.TrimPrefix(dsn, "oracle://")
 		driver = "oci8"
+	case "sqlite3":
+                dsn = strings.TrimPrefix(dsn, "sqlite3://")
 	}
 
 	// Open the DB handle in a separate goroutine so we can terminate early if the context closes.
