@@ -1,4 +1,4 @@
-prefix=${HOME}/gopath/src/github.com/Corundex/database_exporter
+prefix=/home/travis/gopath/src/github.com/Corundex/database_exporter
 includedir=${prefix}/include
 libdir=${prefix}/lib
 
