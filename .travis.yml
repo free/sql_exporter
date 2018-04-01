@@ -2,7 +2,7 @@ language: go
 
 env:
   global:
-    - PKG_CONFIG_PATH=${GOPATH}/github.com/Corundex/database_exporter
+    - PKG_CONFIG_PATH=$HOME/gopath/src/github.com/Corundex/database_exporter
 
 script:
   - go get github.com/golang/glog
