@@ -1,5 +1,14 @@
 language: go
 
+go_import_path:
+  - github.com/golang/glog
+  - github.com/denisenkom/go-mssqldb
+  - github.com/go-sql-driver/mysql
+  - github.com/kshvakov/clickhouse
+  - github.com/lib/pq
+  - github.com/mattn/go-oci8
+  - github.com/mattn/go-sqlite3
+
 script:
   - make style
   - make vet
