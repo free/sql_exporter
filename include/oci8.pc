@@ -1,6 +1,6 @@
-prefix=/usr
-includedir=${prefix}/include/oracle/12.2/client64
-libdir=${prefix}/lib/oracle/12.2/client64/lib
+prefix=${HOME}/gopath/src/github.com/Corundex/database_exporter
+includedir=${prefix}/include
+libdir=${prefix}/lib
 
 Name:oci8
 Description: Oracle Instant Client
