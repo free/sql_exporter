@@ -91,7 +91,7 @@ func OpenConnection(ctx context.Context, logContext, dsn string, maxConns, maxId
 		dsn = strings.TrimPrefix(dsn, "oracle://")
 		driver = "oci8"
 	case "sqlite3":
-                dsn = strings.TrimPrefix(dsn, "sqlite3://")
+		dsn = strings.TrimPrefix(dsn, "sqlite3://")
 	}
 
 	// Open the DB handle in a separate goroutine so we can terminate early if the context closes.
