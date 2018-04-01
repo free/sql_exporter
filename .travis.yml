@@ -8,8 +8,6 @@ script:
   - go get github.com/lib/pq
   - go get github.com/mattn/go-oci8
   - go get github.com/mattn/go-sqlite3
-
-script:
   - make style
   - make vet
   - make test
