@@ -144,6 +144,8 @@ MySQL | `mysql://user:passw@protocol(host:port)/dbname` | `user:passw@protocol(h
 Oracle | `oracle://user:password@host:port/sid` | `user:password@host:port/sid`
 PostgreSQL | `postgres://user:passw@host:port/dbname` | *unchanged*
 SQL Server | `sqlserver://user:passw@host:port/instance` | *unchanged*
+SQLite3 | `sqlite3://file:mybase.db?cache=shared&mode=rwc` | `file:mybase.db?cache=shared&mode=rwc`
+in-memory SQLite3 | `sqlite3://file::memory:?mode=memory&cache=shared` | `file::memory:?mode=memory&cache=shared`
 Clickhouse | `clickhouse://host:port?username=user&password=passw&database=dbname` | `tcp://host:port?username=user&password=passw&database=dbname`
 
 ## Why It Exists
