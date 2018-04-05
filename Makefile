@@ -39,9 +39,11 @@ vet:
 	@echo ">> vetting code"
 	@$(GO) vet $(pkgs)
 
-build: promu
+build:
 	@echo ">> building binaries"
-	@$(PROMU) build --prefix $(PREFIX)
+	@go build ./cmd/database_exporter
+#build: promu
+#	@$(PROMU) build --prefix $(PREFIX)
 
 tarball: promu
 	@echo ">> building release tarball"
