@@ -6,7 +6,7 @@ env:
     - LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/oracle/instantclient_12_1
 
 script:
-  - export ARCH=`uname -i`
+  #- export ARCH=`uname -i`
   - sudo mkdir -p /opt/oracle
   - sudo wget -P /opt/oracle http://library.case.edu/instantclient-basic-linux.x64-12.1.0.2.0.zip
   - sudo wget -P /opt/oracle http://library.case.edu/instantclient-sdk-linux.x64-12.1.0.2.0.zip
