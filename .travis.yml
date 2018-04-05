@@ -34,3 +34,4 @@ script:
   - make vet
   - make test
   - make build
+  - make docker
