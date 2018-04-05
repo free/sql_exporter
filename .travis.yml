@@ -44,4 +44,4 @@ deploy:
     - database_exporter
   skip_cleanup: true
   on:
-    tags: false
+    repo: Corundex/database_exporter
