@@ -14,6 +14,7 @@ script:
   - sudo unzip /opt/oracle/instantclient-sdk-linux.x64-12.1.0.2.0.zip -d /opt/oracle
   - sudo unzip /opt/oracle/instantclient-sqlplus-linux.x64-12.1.0.2.0.zip -d /opt/oracle
   - sudo ln -s /opt/oracle/instantclient_12_1/libclntsh.so.12.1 /opt/oracle/instantclient_12_1/libclntsh.so
+  - sudo apt-get install libaio1
   - go get github.com/golang/glog
   - go get github.com/golang/protobuf/proto
   - go get github.com/prometheus/client_golang/prometheus
