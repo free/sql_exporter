@@ -3,6 +3,7 @@ language: go
 env:
   global:
     - PKG_CONFIG_PATH=$HOME/gopath/src/github.com/Corundex/database_exporter/include
+    - LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/oracle/instantclient_12_1
 
 script:
   - sudo mkdir -p /opt/oracle
@@ -12,8 +13,6 @@ script:
   - sudo unzip /opt/oracle/instantclient-basic-linux.x64-12.1.0.2.0.zip -d /opt/oracle
   - sudo unzip /opt/oracle/instantclient-sdk-linux.x64-12.1.0.2.0.zip -d /opt/oracle
   - sudo unzip /opt/oracle/instantclient-sqlplus-linux.x64-12.1.0.2.0.zip -d /opt/oracle
-  - LD_LIBRARY_PATH=/opt/oracle/instantclient_12_1
-  - export LD_LIBRARY_PATH
   - sudo ln -s /opt/oracle/instantclient_12_1/libclntsh.so.12.1 /opt/oracle/instantclient_12_1/libclntsh.so
   - go get github.com/golang/glog
   - go get github.com/golang/protobuf/proto
