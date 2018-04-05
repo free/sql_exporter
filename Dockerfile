@@ -5,7 +5,7 @@ ADD .   /go/src/github.com/Corundex/database_exporter
 WORKDIR /go/src/github.com/Corundex/database_exporter
 
 # Do makefile
-RUN make
+# RUN make
 
 # Make image and copy build database_exporter
 FROM        quay.io/prometheus/busybox:glibc
