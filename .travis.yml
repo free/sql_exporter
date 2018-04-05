@@ -46,4 +46,5 @@ deploy:
   skip_cleanup: true
   on:
     repo: Corundex/database_exporter
-    tags: false
+    branch: master
+    tags: true
