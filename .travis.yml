@@ -35,7 +35,7 @@ script:
   - make vet
   - make test
   - make build
-  - tar -czvf database_exporter.linux-${ARCH}.tar.gz database_exporter ./config LICENSE VERSION
+  - tar -czvf database_exporter.tar.gz database_exporter ./config LICENSE VERSION
 
 deploy:
   provider: releases
