@@ -1,6 +1,6 @@
 prefix=/opt/oracle/instantclient_12_1
-includedir=${prefix}/sdk/include/
-libdir=${prefix}/lib
+includedir=${prefix}/sdk/include
+libdir=${prefix}/
 
 Name:oci8
 Description: Oracle Instant Client
