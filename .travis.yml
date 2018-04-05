@@ -42,7 +42,7 @@ deploy:
   api_key:
     secure: V557uoyEDg+dkidyJ96bZvwV6+raLFBnf81ZHKKHHVWNK87vQx2ZDkpQ5Uu5RLstmTi28HKk/rHLQxS0Rd1l2bgy6GIkS8S5oszgCVd82FnJG8bBTVextxP6vdVkzSHBSeH4/uIS9LVBWehK6DkkAcO9ntWR7mQwjyirtYaAKIsMeeUXvGpLezndiGXckBfezPs3h0rc4+X/ED+Qm73pNky1I+DPBxXR1f0whIuGFuH8gTMRsxJG6NlflKAEtpU9NDFdYVos8RKI6b3vNUc4AupYefP6Lhk+B0OiDu2qR25UpIk59G4YSwmyLyEnKAM0dOwxZGJenOAz/yUEQOHNpWkcR9E61LNiOFCmTJHGbHHpl6BhH2bn32CnV2l6pkQyqsVl3G6d+2ZMWHgqDf0eI+/DV+7CIzfSzlsrBwsNBBQYtnHRgODkv9QHNAhvmyYAbb0nkxsA129d2rF9Ig5KIwcvd1z6a9KYwVG6E7qgPfnqmKy9GW4BY5YTZRgXc/xYSc+ANjdQNSJpiri+kd/nBmwkFeykRU3a0pw+AtZUQk7noXPoSHHvVGT1pudvs9KhvwBEpzn1jbza07j9RYLGwavo6tO+gXR6f9f68jl18xb0915qk16Ftclppxz83nvG1Od7egIigncPc5yKpy53NYMgN3VPM6G0DnlBBhfh/aE=
   file: 
-    - database_exporter.linux-${ARCH}tar.gz
+    - database_exporter.linux-${ARCH}.tar.gz
   skip_cleanup: true
   on:
     repo: Corundex/database_exporter
