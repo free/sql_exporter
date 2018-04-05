@@ -39,7 +39,8 @@ script:
 deploy:
   provider: releases
   api_key: HRyRWPNoFTRk4gIwjESvkQ
-  file: database_exporter
+  file: 
+    - database_exporter
   skip_cleanup: true
   on:
-    tags: true
+    tags: false
