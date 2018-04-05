@@ -1,9 +1,9 @@
-prefix=/home/travis/gopath/src/github.com/Corundex/database_exporter
-includedir=${prefix}/include
-libdir=${prefix}/lib
+prefix=/opt/oracle
+includedir=${prefix}/instantclient_12_1
+libdir=${prefix}/instantclient_12_1/lib
 
 Name:oci8
 Description: Oracle Instant Client
-Version: 12.2
+Version: 12.1
 Cflags: -I${includedir}
 Libs: -L${libdir} -lclntsh
