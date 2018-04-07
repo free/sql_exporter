@@ -4,7 +4,7 @@ WORKDIR     /exporter/
 RUN         yum -y update && yum clean all
 RUN         yum -y install libaio
 RUN         yum -y install unzip
-ADD         https://github.com/Corundex/database_exporter/releases/download/0.6.3/database_exporter.tar.gz /exporter/
+ADD         https://github.com/Corundex/database_exporter/releases/download/0.6.4/database_exporter.tar.gz /exporter/
 RUN         tar -xzvf /exporter/database_exporter.tar.gz
 RUN         cp /exporter/config/mysql_exporter.yml /exporter/database_exporter.yml
 RUN         mkdir -p /exporter/mysql_collectors
