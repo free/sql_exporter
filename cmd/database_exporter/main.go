@@ -50,7 +50,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	log.Infof("Starting SQL exporter %s %s", version.Info(), version.BuildContext())
+	log.Infof("Starting Database Exporter %s %s", version.Info(), version.BuildContext())
 
 	exporter, err := database_exporter.NewExporter(*configFile)
 	if err != nil {
