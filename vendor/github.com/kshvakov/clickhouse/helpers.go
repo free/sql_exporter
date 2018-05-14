@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql/driver"
 	"fmt"
+	"reflect"
 	"regexp"
 	"strings"
 	"time"
@@ -76,7 +77,8 @@ func numInput(query string) int {
 				char == '>',
 				char == '(',
 				char == ',',
-				char == '%':
+				char == '%',
+				char == '[':
 				keyword = true
 			default:
 				keyword = keyword && (char == ' ' || char == '\t' || char == '\n')
@@ -115,6 +117,14 @@ func isInsert(query string) bool {
 }
 
 func quote(v driver.Value) string {
+	switch v := reflect.ValueOf(v); v.Kind() {
+	case reflect.Slice:
+		values := make([]string, 0, v.Len())
+		for i := 0; i < v.Len(); i++ {
+			values = append(values, quote(v.Index(i).Interface()))
+		}
+		return strings.Join(values, ", ")
+	}
 	switch v := v.(type) {
 	case string:
 		return "'" + strings.NewReplacer(`\`, `\\`, `'`, `\'`).Replace(v) + "'"

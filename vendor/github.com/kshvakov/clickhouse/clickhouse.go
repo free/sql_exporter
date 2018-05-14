@@ -43,8 +43,6 @@ type clickhouse struct {
 	compress      bool
 	blockSize     int
 	inTransaction bool
-	readTimeout   time.Duration
-	writeTimeout  time.Duration
 }
 
 func (ch *clickhouse) Prepare(query string) (driver.Stmt, error) {
@@ -156,9 +154,13 @@ func (ch *clickhouse) Rollback() error {
 	if !ch.inTransaction {
 		return sql.ErrTxDone
 	}
+	if ch.block != nil {
+		ch.block.Reset()
+	}
 	ch.block = nil
+	ch.buffer = nil
 	ch.inTransaction = false
-	return nil
+	return ch.conn.Close()
 }
 
 func (ch *clickhouse) CheckNamedValue(nv *driver.NamedValue) error {
@@ -299,5 +301,5 @@ func (ch *clickhouse) watchCancel(ctx context.Context) func() {
 			}
 		}
 	}
-	return nil
+	return func() {}
 }

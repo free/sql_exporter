@@ -5,11 +5,13 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
+	"io"
 	"log"
 	"net/url"
 	"os"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/kshvakov/clickhouse/lib/binary"
@@ -24,16 +26,36 @@ const (
 	DefaultWriteTimeout = time.Minute
 )
 
-var hostname, _ = os.Hostname()
+var (
+	unixtime    int64
+	logOutput   io.Writer = os.Stdout
+	hostname, _           = os.Hostname()
+)
 
 func init() {
 	sql.Register("clickhouse", &bootstrap{})
+	go func() {
+		for tick := time.Tick(time.Second); ; {
+			select {
+			case <-tick:
+				atomic.AddInt64(&unixtime, int64(time.Second))
+			}
+		}
+	}()
+}
+
+func now() time.Time {
+	return time.Unix(atomic.LoadInt64(&unixtime), 0)
 }
 
 type bootstrap struct{}
 
 func (d *bootstrap) Open(dsn string) (driver.Conn, error) {
 	return Open(dsn)
+}
+
+func SetLogOutput(output io.Writer) {
+	logOutput = output
 }
 
 func Open(dsn string) (driver.Conn, error) {
@@ -104,16 +126,14 @@ func open(dsn string) (*clickhouse, error) {
 
 	var (
 		ch = clickhouse{
-			logf:         func(string, ...interface{}) {},
-			compress:     compress,
-			blockSize:    blockSize,
-			readTimeout:  readTimeout,
-			writeTimeout: writeTimeout,
+			logf:      func(string, ...interface{}) {},
+			compress:  compress,
+			blockSize: blockSize,
 			ServerInfo: data.ServerInfo{
 				Timezone: time.Local,
 			},
 		}
-		logger = log.New(os.Stdout, "[clickhouse]", 0)
+		logger = log.New(logOutput, "[clickhouse]", 0)
 	)
 	if debug, err := strconv.ParseBool(url.Query().Get("debug")); err == nil && debug {
 		ch.logf = logger.Printf
@@ -123,7 +143,7 @@ func open(dsn string) (*clickhouse, error) {
 		database,
 		username,
 	)
-	if ch.conn, err = dial(secure, skipVerify, hosts, noDelay, connOpenStrategy, ch.logf); err != nil {
+	if ch.conn, err = dial(secure, skipVerify, hosts, readTimeout, writeTimeout, noDelay, connOpenStrategy, ch.logf); err != nil {
 		return nil, err
 	}
 	logger.SetPrefix(fmt.Sprintf("[clickhouse][connect=%d]", ch.conn.ident))
