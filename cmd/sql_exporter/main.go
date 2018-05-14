@@ -15,6 +15,13 @@ import (
 	_ "net/http/pprof"
 )
 
+var (
+	showVersion   = flag.Bool("version", false, "Print version information.")
+	listenAddress = flag.String("web.listen-address", ":9399", "Address to listen on for web interface and telemetry.")
+	metricsPath   = flag.String("web.metrics-path", "/metrics", "Path under which to expose metrics.")
+	configFile    = flag.String("config.file", "sql_exporter.yml", "SQL Exporter configuration file name.")
+)
+
 func init() {
 	prometheus.MustRegister(version.NewCollector("sql_exporter"))
 }
@@ -24,13 +31,6 @@ func main() {
 		runtime.SetBlockProfileRate(1)
 		runtime.SetMutexProfileFraction(1)
 	}
-
-	var (
-		showVersion   = flag.Bool("version", false, "Print version information.")
-		listenAddress = flag.String("web.listen-address", ":9399", "Address to listen on for web interface and telemetry.")
-		metricsPath   = flag.String("web.metrics-path", "/metrics", "Path under which to expose metrics.")
-		configFile    = flag.String("config.file", "sql_exporter.yml", "SQL Exporter configuration file name.")
-	)
 
 	// Override --alsologtostderr default value.
 	if alsoLogToStderr := flag.Lookup("alsologtostderr"); alsoLogToStderr != nil {
