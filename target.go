@@ -48,7 +48,7 @@ type target struct {
 }
 
 // NewTarget returns a new Target with the given instance name, data source name, collectors and constant labels.
-// An empty target name means the exporter is runnning in single target mode: no synthetic metrics will be exported.
+// An empty target name means the exporter is running in single target mode: no synthetic metrics will be exported.
 func NewTarget(
 	logContext, name, dsn string, ccs []*config.CollectorConfig, constLabels prometheus.Labels, gc *config.GlobalConfig) (
 	Target, errors.WithContext) {
