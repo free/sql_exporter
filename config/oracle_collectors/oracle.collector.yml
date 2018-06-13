@@ -8,6 +8,24 @@ collector_name: oracle_metrics
 #min_interval: 0s
 
 metrics:
+  - metric_name: oracle_metric
+    type: gauge
+    help: 'Oracle v$metric'
+    values:
+      - value
+    key_labels:
+      - dbname
+      - name
+      - unit
+    query: |
+      select
+      (select name from v$database) "dbname",
+      metric_name "name",
+      metric_unit "unit", 
+      sum(value) "value"
+      from v$metric 
+      group by metric_name, metric_unit
+      
   - metric_name: oracle_tablespace_size
     type: gauge
     help: 'Size of oracle db tablespaces.'
