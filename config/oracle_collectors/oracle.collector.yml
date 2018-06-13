@@ -16,5 +16,5 @@ metrics:
     key_labels:
       - tablespace_name
     query: |
-      select tablespace_name, sum(bytes) value from dba_data_files group by tablespace_name
+      select tablespace_name "tablespace_name", sum(bytes) "value" from dba_data_files group by tablespace_name
 
