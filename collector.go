@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"../database_exporter/libs/config"
-	"../database_exporter/libs/errors"
+	"github.com/Corundex/database_exporter/libs/config"
+	"github.com/Corundex/database_exporter/libs/errors"
 
 	log "github.com/golang/glog"
 	dto "github.com/prometheus/client_model/go"

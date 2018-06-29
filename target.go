@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"../database_exporter/libs/config"
-	"../database_exporter/libs/errors"
+	"github.com/Corundex/database_exporter/libs/config"
+	"github.com/Corundex/database_exporter/libs/errors"
 	go_n1ql "github.com/couchbase/go_n1ql"
 	"github.com/golang/protobuf/proto"
 	"github.com/prometheus/client_golang/prometheus"

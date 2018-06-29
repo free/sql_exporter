@@ -9,7 +9,7 @@ import (
 
 	_ "net/http/pprof"
 
-	"../../../database_exporter"
+	"github.com/Corundex/database_exporter"
 	log "github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
