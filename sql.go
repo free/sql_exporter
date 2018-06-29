@@ -76,9 +76,9 @@ import (
 //
 // Using the github.com/couchbase/go_n1ql driver, DSN format (passed to the driver with the `n1ql://`` prefix):
 //   Connecting to the instance:
-//   n1ql://localhost:8093@{"creds":[{"user":"admin:Administrator","pass":"asdasd"}],"timeout":"10s"}
+//   n1ql://localhost:8093@creds=[{"user":"Administrator","pass":"admin123"}]@timeout=10s
 //   Connecting to the cluster:
-//   n1ql://http://localhost:9000/@{"creds":[{"user":"admin:Administrator","pass":"asdasd"}],"timeout":"10s"}
+//   n1ql://http://localhost:9000/@creds=[{"user":"Administrator","pass":"admin123"}]@timeout=10s
 //
 func OpenConnection(ctx context.Context, logContext, dsn string, maxConns, maxIdleConns int) (*sql.DB, error) {
 	// Extract driver name from DSN.

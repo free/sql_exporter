@@ -1,5 +1,4 @@
 FROM        centos:7
-MAINTAINER  corundex@butko.net
 WORKDIR     /exporter/
 RUN         yum -y update && yum clean all
 RUN         yum -y install libaio
