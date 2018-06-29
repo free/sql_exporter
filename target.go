@@ -6,11 +6,13 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
-	"github.com/Corundex/database_exporter/libs/config"
-	"github.com/Corundex/database_exporter/libs/errors"
+	"../database_exporter/libs/config"
+	"../database_exporter/libs/errors"
+	go_n1ql "github.com/couchbase/go_n1ql"
 	"github.com/golang/protobuf/proto"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
@@ -134,6 +136,7 @@ func (t *target) ping(ctx context.Context) errors.WithContext {
 	// We cannot do this only once at creation time because the sql.Open() documentation says it "may" open an actual
 	// connection, so it "may" actually fail to open a handle to a DB that's initially down.
 	if t.conn == nil {
+		setParamsForCoachbase(t.dsn)
 		conn, err := OpenConnection(ctx, t.logContext, t.dsn, t.globalConfig.MaxConns, t.globalConfig.MaxIdleConns)
 		if err != nil {
 			if err != ctx.Err() {
@@ -141,6 +144,7 @@ func (t *target) ping(ctx context.Context) errors.WithContext {
 			}
 			// if err == ctx.Err() fall through
 		} else {
+			// set context for coachbase driver
 			t.conn = conn
 		}
 	}
@@ -172,4 +176,30 @@ func boolToFloat64(value bool) float64 {
 		return 1.0
 	}
 	return 0.0
+}
+
+func setParamsForCoachbase(dsn string) {
+	idx := strings.Index(dsn, "://")
+	if idx == -1 {
+		return
+	}
+	driver := dsn[:idx]
+
+	if driver != `n1ql` {
+		return
+	}
+
+	strs := strings.Split(dsn, "@")
+
+	if len(strs) < 2 {
+		return
+	}
+
+	for _, str := range strs[1:] {
+		//fmt.Println(str)
+		keyvar := strings.Split(str, "=")
+		if len(keyvar) > 1 {
+			go_n1ql.SetQueryParams(keyvar[0], keyvar[1])
+		}
+	}
 }

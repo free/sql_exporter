@@ -1,0 +1,26 @@
+# A collector defining standard metrics for PostreSQL Server.
+#
+#
+
+collector_name: coachbase_metrics
+
+# Similar to global.min_interval, but applies to the queries defined by this collector only.
+#min_interval: 0s
+
+metrics:
+  - metric_name: coachbase_keyspaces
+    type: gauge
+    help: Sample query
+    values:
+      - count
+    key_labels:
+      - name
+    query: |
+      SELECT 
+        count(1) as count,
+        name
+      FROM
+        system:keyspaces
+      GROUP BY
+        name
+

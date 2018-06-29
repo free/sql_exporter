@@ -8,12 +8,13 @@ import (
 
 	log "github.com/golang/glog"
 
+	_ "github.com/couchbase/go_n1ql"     // register the Coachbase driver
 	_ "github.com/denisenkom/go-mssqldb" // register the MS-SQL driver
 	_ "github.com/go-sql-driver/mysql"   // register the MySQL driver
 	_ "github.com/kshvakov/clickhouse"   // register the ClickHouse driver
 	_ "github.com/lib/pq"                // register the PostgreSQL driver
-	_ "github.com/mattn/go-oci8"         // register the Oracle DB driver
-	_ "github.com/mattn/go-sqlite3"      // register the SQLite3 driver
+	// _ "g i t h u b .com/mattn/go-oci8"         // register the Oracle DB driver
+	_ "github.com/mattn/go-sqlite3" // register the SQLite3 driver
 )
 
 // OpenConnection extracts the driver name from the DSN (expected as the URI scheme), adjusts it where necessary (e.g.
@@ -71,6 +72,14 @@ import (
 //
 //   f.e sqlite3://file:mybase.db?cache=shared&mode=rwc
 //
+// Coachbase
+//
+// Using the github.com/couchbase/go_n1ql driver, DSN format (passed to the driver with the `n1ql://`` prefix):
+//   Connecting to the instance:
+//   n1ql://localhost:8093@{"creds":[{"user":"admin:Administrator","pass":"asdasd"}],"timeout":"10s"}
+//   Connecting to the cluster:
+//   n1ql://http://localhost:9000/@{"creds":[{"user":"admin:Administrator","pass":"asdasd"}],"timeout":"10s"}
+//
 func OpenConnection(ctx context.Context, logContext, dsn string, maxConns, maxIdleConns int) (*sql.DB, error) {
 	// Extract driver name from DSN.
 	idx := strings.Index(dsn, "://")
@@ -92,6 +101,9 @@ func OpenConnection(ctx context.Context, logContext, dsn string, maxConns, maxId
 		driver = "oci8"
 	case "sqlite3":
 		dsn = strings.TrimPrefix(dsn, "sqlite3://")
+	case "n1ql":
+		dsn = strings.TrimPrefix(dsn, "n1ql://")
+		dsn = strings.Split(dsn, "@")[0]
 	}
 
 	// Open the DB handle in a separate goroutine so we can terminate early if the context closes.
@@ -124,6 +136,10 @@ func OpenConnection(ctx context.Context, logContext, dsn string, maxConns, maxId
 	}
 	return conn, nil
 }
+
+// func updateCoachbaseParams(connection) {
+
+// }
 
 // PingDB is a wrapper around sql.DB.PingContext() that terminates as soon as the context is closed.
 //

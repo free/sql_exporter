@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/Corundex/database_exporter/libs/config"
-	"github.com/Corundex/database_exporter/libs/errors"
+	"../database_exporter/libs/config"
+	"../database_exporter/libs/errors"
 	log "github.com/golang/glog"
 )
 
