@@ -150,8 +150,10 @@ SQL Server | `sqlserver://user:passw@host:port/instance` | *unchanged*
 SQLite3 | `sqlite3://file:mybase.db?cache=shared&mode=rwc` | `file:mybase.db?cache=shared&mode=rwc`
 in-memory SQLite3 | `sqlite3://file::memory:?mode=memory&cache=shared` | `file::memory:?mode=memory&cache=shared`
 Clickhouse | `clickhouse://host:port?username=user&password=passw&database=db` | `tcp://host:port?username=user&password=passw&database=db`
-Coachbase instance (in process)| `n1ql://host:port@creds=[{"user":"admin:Administrator","pass":"asdasd"}]@timeout=10s` | `host:port`
-Coachbase cluster (in process)| `n1ql://http://host:port/@creds=[{"user":"admin:Administrator","pass":"asdasd"}]@timeout=10s` | `http://host:port/`
+Coachbase instance 
+(in process)| `n1ql://host:port@creds=[{"user":"Administrator","pass":"admin123"}]@timeout=10s` | `host:port`
+Coachbase cluster 
+(in process)| `n1ql://http://host:port/@creds=[{"user":"Administrator","pass":"admin123"}]@timeout=10s` | `http://host:port/`
 
 ## Why It Exists
 
