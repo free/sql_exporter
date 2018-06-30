@@ -13,7 +13,7 @@
 
 GO    := GO15VENDOREXPERIMENT=1 go
 PROMU := $(GOPATH)/bin/promu
-pkgs  := ./
+pkgs   = $(shell $(GO) list ./... | grep -v /Corundex/)
 
 PREFIX              ?= $(shell pwd)
 BIN_DIR             ?= $(shell pwd)
@@ -37,7 +37,7 @@ format:
 
 vet:
 	@echo ">> vetting code"
- @$(GO) vet $(pkgs)
+	@$(GO) vet $(pkgs)
 
 build:
 	@echo ">> building binaries"
