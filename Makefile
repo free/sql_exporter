@@ -37,11 +37,11 @@ format:
 
 vet:
 	@echo ">> vetting code"
-	@$(GO) vet $(pkgs)
+#@$(GO) vet $(pkgs)
 
 build:
 	@echo ">> building binaries"
-	@go build ./cmd/database_exporter
+	@go build ./
 #build: promu
 #	@$(PROMU) build --prefix $(PREFIX)
 
