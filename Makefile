@@ -29,6 +29,7 @@ style:
 
 test:
 	@echo ">> running tests"
+	@echo $(pkgs)
 	@$(GO) test -short -race $(pkgs)
 
 format:
