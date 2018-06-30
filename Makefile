@@ -40,7 +40,7 @@ vet:
 	@$(GO) vet $(pkgs)
 
 build:
-	@echo ">> building binaries"
+	@echo ">> building binaries - [go build $(pkgs)]"
 	@go build $(pkgs)
 # build: promu
 #	@$(PROMU) build --prefix $(PREFIX)
