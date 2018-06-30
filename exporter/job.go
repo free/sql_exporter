@@ -3,8 +3,6 @@ package exporter
 import (
 	"fmt"
 
-	"./config"
-	"./errors"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -15,13 +13,13 @@ type Job interface {
 
 // job implements Job. It wraps the corresponding JobConfig and a set of Targets.
 type job struct {
-	config     *config.JobConfig
+	config     *JobConfig
 	targets    []Target
 	logContext string
 }
 
 // NewJob returns a new Job with the given configuration.
-func NewJob(jc *config.JobConfig, gc *config.GlobalConfig) (Job, errors.WithContext) {
+func NewJob(jc *JobConfig, gc *GlobalConfig) (Job, WithContext) {
 	j := job{
 		config:     jc,
 		targets:    make([]Target, 0, 10),
@@ -37,7 +35,7 @@ func NewJob(jc *config.JobConfig, gc *config.GlobalConfig) (Job, errors.WithCont
 			for name, value := range sc.Labels {
 				// Shouldn't happen as there are sanity checks in config, but check nonetheless.
 				if _, found := constLabels[name]; found {
-					return nil, errors.Errorf(j.logContext, "duplicate label %q", name)
+					return nil, Errorf(j.logContext, "duplicate label %q", name)
 				}
 				constLabels[name] = value
 			}

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sync"
 
-	"./config"
 	"github.com/golang/protobuf/proto"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
@@ -18,11 +17,11 @@ type Exporter interface {
 	// WithContext returns a (single use) copy of the Exporter, which will use the provided context for Gather() calls.
 	WithContext(context.Context) Exporter
 	// Config returns the Exporter's underlying Config object.
-	Config() *config.Config
+	Config() *Config
 }
 
 type exporter struct {
-	config  *config.Config
+	config  *Config
 	targets []Target
 
 	ctx context.Context
@@ -30,7 +29,7 @@ type exporter struct {
 
 // NewExporter returns a new Exporter with the provided config.
 func NewExporter(configFile string) (Exporter, error) {
-	c, err := config.Load(configFile)
+	c, err := Load(configFile)
 	if err != nil {
 		return nil, err
 	}
@@ -133,6 +132,6 @@ func (e *exporter) Gather() ([]*dto.MetricFamily, error) {
 }
 
 // Config implements Exporter.
-func (e *exporter) Config() *config.Config {
+func (e *exporter) Config() *Config {
 	return e.config
 }

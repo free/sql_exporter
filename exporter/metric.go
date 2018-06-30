@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"sort"
 
-	"./config"
-	"./errors"
 	"github.com/golang/protobuf/proto"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
@@ -27,21 +25,21 @@ type MetricDesc interface {
 
 // MetricFamily implements MetricDesc for SQL metrics, with logic for populating its labels and values from sql.Rows.
 type MetricFamily struct {
-	config      *config.MetricConfig
+	config      *MetricConfig
 	constLabels []*dto.LabelPair
 	labels      []string
 	logContext  string
 }
 
 // NewMetricFamily creates a new MetricFamily with the given metric config and const labels (e.g. job and instance).
-func NewMetricFamily(logContext string, mc *config.MetricConfig, constLabels []*dto.LabelPair) (*MetricFamily, errors.WithContext) {
+func NewMetricFamily(logContext string, mc *MetricConfig, constLabels []*dto.LabelPair) (*MetricFamily, WithContext) {
 	logContext = fmt.Sprintf("%s, metric=%q", logContext, mc.Name)
 
 	if len(mc.Values) == 0 {
-		return nil, errors.New(logContext, "no value column defined")
+		return nil, New(logContext, "no value column defined")
 	}
 	if len(mc.Values) > 1 && mc.ValueLabel == "" {
-		return nil, errors.New(logContext, "multiple values but no value label")
+		return nil, New(logContext, "multiple values but no value label")
 	}
 
 	labels := make([]string, 0, len(mc.KeyLabels)+1)
@@ -167,7 +165,7 @@ func (a automaticMetricDesc) LogContext() string {
 // A Metric models a single sample value with its meta data being exported to Prometheus.
 type Metric interface {
 	Desc() MetricDesc
-	Write(out *dto.Metric) errors.WithContext
+	Write(out *dto.Metric) WithContext
 }
 
 // NewMetric returns a metric with one fixed value that cannot be changed.
@@ -197,7 +195,7 @@ func (m *constMetric) Desc() MetricDesc {
 }
 
 // Write implements Metric.
-func (m *constMetric) Write(out *dto.Metric) errors.WithContext {
+func (m *constMetric) Write(out *dto.Metric) WithContext {
 	out.Label = m.labelPairs
 	switch t := m.desc.ValueType(); t {
 	case prometheus.CounterValue:
@@ -205,7 +203,7 @@ func (m *constMetric) Write(out *dto.Metric) errors.WithContext {
 	case prometheus.GaugeValue:
 		out.Gauge = &dto.Gauge{Value: proto.Float64(m.val)}
 	default:
-		return errors.Errorf(m.desc.LogContext(), "encountered unknown type %v", t)
+		return Errorf(m.desc.LogContext(), "encountered unknown type %v", t)
 	}
 	return nil
 }
@@ -236,14 +234,14 @@ func makeLabelPairs(desc MetricDesc, labelValues []string) []*dto.LabelPair {
 }
 
 type invalidMetric struct {
-	err errors.WithContext
+	err WithContext
 }
 
 // NewInvalidMetric returns a metric whose Write method always returns the provided error.
-func NewInvalidMetric(err errors.WithContext) Metric {
+func NewInvalidMetric(err WithContext) Metric {
 	return invalidMetric{err}
 }
 
 func (m invalidMetric) Desc() MetricDesc { return nil }
 
-func (m invalidMetric) Write(*dto.Metric) errors.WithContext { return m.err }
+func (m invalidMetric) Write(*dto.Metric) WithContext { return m.err }

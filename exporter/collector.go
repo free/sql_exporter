@@ -7,9 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"./config"
-	"./errors"
-
 	log "github.com/golang/glog"
 	dto "github.com/prometheus/client_model/go"
 )
@@ -23,18 +20,18 @@ type Collector interface {
 
 // collector implements Collector. It wraps a collection of queries, metrics and the database to collect them from.
 type collector struct {
-	config     *config.CollectorConfig
+	config     *CollectorConfig
 	queries    []*Query
 	logContext string
 }
 
 // NewCollector returns a new Collector with the given configuration and database. The metrics it creates will all have
 // the provided const labels applied.
-func NewCollector(logContext string, cc *config.CollectorConfig, constLabels []*dto.LabelPair) (Collector, errors.WithContext) {
+func NewCollector(logContext string, cc *CollectorConfig, constLabels []*dto.LabelPair) (Collector, WithContext) {
 	logContext = fmt.Sprintf("%s, collector=%q", logContext, cc.Name)
 
 	// Maps each query to the list of metric families it populates.
-	queryMFs := make(map[*config.QueryConfig][]*MetricFamily, len(cc.Metrics))
+	queryMFs := make(map[*QueryConfig][]*MetricFamily, len(cc.Metrics))
 
 	// Instantiate metric families.
 	for _, mc := range cc.Metrics {
@@ -112,7 +109,7 @@ type cachingCollector struct {
 // Collect implements Collector.
 func (cc *cachingCollector) Collect(ctx context.Context, conn *sql.DB, ch chan<- Metric) {
 	if ctx.Err() != nil {
-		ch <- NewInvalidMetric(errors.Wrap(cc.rawColl.logContext, ctx.Err()))
+		ch <- NewInvalidMetric(Wrap(cc.rawColl.logContext, ctx.Err()))
 		return
 	}
 
@@ -148,6 +145,6 @@ func (cc *cachingCollector) Collect(ctx context.Context, conn *sql.DB, ch chan<-
 	case <-ctx.Done():
 		// Context closed, record an error and return
 		// TODO: increment an error counter
-		ch <- NewInvalidMetric(errors.Wrap(cc.rawColl.logContext, ctx.Err()))
+		ch <- NewInvalidMetric(Wrap(cc.rawColl.logContext, ctx.Err()))
 	}
 }

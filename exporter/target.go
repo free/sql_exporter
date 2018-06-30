@@ -10,8 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"./config"
-	"./errors"
 	go_n1ql "github.com/couchbase/go_n1ql"
 	"github.com/golang/protobuf/proto"
 	"github.com/prometheus/client_golang/prometheus"
@@ -41,7 +39,7 @@ type target struct {
 	dsn                string
 	collectors         []Collector
 	constLabels        prometheus.Labels
-	globalConfig       *config.GlobalConfig
+	globalConfig       *GlobalConfig
 	upDesc             MetricDesc
 	scrapeDurationDesc MetricDesc
 	logContext         string
@@ -52,8 +50,8 @@ type target struct {
 // NewTarget returns a new Target with the given instance name, data source name, collectors and constant labels.
 // An empty target name means the exporter is runnning in single target mode: no synthetic metrics will be exported.
 func NewTarget(
-	logContext, name, dsn string, ccs []*config.CollectorConfig, constLabels prometheus.Labels, gc *config.GlobalConfig) (
-	Target, errors.WithContext) {
+	logContext, name, dsn string, ccs []*CollectorConfig, constLabels prometheus.Labels, gc *GlobalConfig) (
+	Target, WithContext) {
 
 	if name != "" {
 		logContext = fmt.Sprintf("%s, target=%q", logContext, name)
@@ -102,7 +100,7 @@ func (t *target) Collect(ctx context.Context, ch chan<- Metric) {
 
 	err := t.ping(ctx)
 	if err != nil {
-		ch <- NewInvalidMetric(errors.Wrap(t.logContext, err))
+		ch <- NewInvalidMetric(Wrap(t.logContext, err))
 		targetUp = false
 	}
 	if t.name != "" {
@@ -131,7 +129,7 @@ func (t *target) Collect(ctx context.Context, ch chan<- Metric) {
 	}
 }
 
-func (t *target) ping(ctx context.Context) errors.WithContext {
+func (t *target) ping(ctx context.Context) WithContext {
 	// Create the DB handle, if necessary. It won't usually open an actual connection, so we'll need to ping afterwards.
 	// We cannot do this only once at creation time because the sql.Open() documentation says it "may" open an actual
 	// connection, so it "may" actually fail to open a handle to a DB that's initially down.
@@ -140,7 +138,7 @@ func (t *target) ping(ctx context.Context) errors.WithContext {
 		conn, err := OpenConnection(ctx, t.logContext, t.dsn, t.globalConfig.MaxConns, t.globalConfig.MaxIdleConns)
 		if err != nil {
 			if err != ctx.Err() {
-				return errors.Wrap(t.logContext, err)
+				return Wrap(t.logContext, err)
 			}
 			// if err == ctx.Err() fall through
 		} else {
@@ -159,12 +157,12 @@ func (t *target) ping(ctx context.Context) errors.WithContext {
 			}
 		}
 		if err != nil {
-			return errors.Wrap(t.logContext, err)
+			return Wrap(t.logContext, err)
 		}
 	}
 
 	if ctx.Err() != nil {
-		return errors.Wrap(t.logContext, ctx.Err())
+		return Wrap(t.logContext, ctx.Err())
 	}
 	return nil
 }

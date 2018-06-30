@@ -5,14 +5,12 @@ import (
 	"database/sql"
 	"fmt"
 
-	"./config"
-	"./errors"
 	log "github.com/golang/glog"
 )
 
 // Query wraps a sql.Stmt and all the metrics populated from it. It helps extract keys and values from result rows.
 type Query struct {
-	config         *config.QueryConfig
+	config         *QueryConfig
 	metricFamilies []*MetricFamily
 	// columnTypes maps column names to the column type expected by metrics: key (string) or value (float64).
 	columnTypes columnTypeMap
@@ -31,7 +29,7 @@ const (
 )
 
 // NewQuery returns a new Query that will populate the given metric families.
-func NewQuery(logContext string, qc *config.QueryConfig, metricFamilies ...*MetricFamily) (*Query, errors.WithContext) {
+func NewQuery(logContext string, qc *QueryConfig, metricFamilies ...*MetricFamily) (*Query, WithContext) {
 	logContext = fmt.Sprintf("%s, query=%q", logContext, qc.Name)
 
 	columnTypes := make(columnTypeMap)
@@ -59,11 +57,11 @@ func NewQuery(logContext string, qc *config.QueryConfig, metricFamilies ...*Metr
 }
 
 // setColumnType stores the provided type for a given column, checking for conflicts in the process.
-func setColumnType(logContext, columnName string, ctype columnType, columnTypes columnTypeMap) errors.WithContext {
+func setColumnType(logContext, columnName string, ctype columnType, columnTypes columnTypeMap) WithContext {
 	previousType, found := columnTypes[columnName]
 	if found {
 		if previousType != ctype {
-			return errors.Errorf(logContext, "column %q used both as key and value", columnName)
+			return Errorf(logContext, "column %q used both as key and value", columnName)
 		}
 	} else {
 		columnTypes[columnName] = ctype
@@ -74,7 +72,7 @@ func setColumnType(logContext, columnName string, ctype columnType, columnTypes 
 // Collect is the equivalent of prometheus.Collector.Collect() but takes a context to run in and a database to run on.
 func (q *Query) Collect(ctx context.Context, conn *sql.DB, ch chan<- Metric) {
 	if ctx.Err() != nil {
-		ch <- NewInvalidMetric(errors.Wrap(q.logContext, ctx.Err()))
+		ch <- NewInvalidMetric(Wrap(q.logContext, ctx.Err()))
 		return
 	}
 	rows, err := q.run(ctx, conn)
@@ -102,12 +100,12 @@ func (q *Query) Collect(ctx context.Context, conn *sql.DB, ch chan<- Metric) {
 		}
 	}
 	if err1 := rows.Err(); err1 != nil {
-		ch <- NewInvalidMetric(errors.Wrap(q.logContext, err1))
+		ch <- NewInvalidMetric(Wrap(q.logContext, err1))
 	}
 }
 
 // run executes the query on the provided database, in the provided context.
-func (q *Query) run(ctx context.Context, conn *sql.DB) (*sql.Rows, errors.WithContext) {
+func (q *Query) run(ctx context.Context, conn *sql.DB) (*sql.Rows, WithContext) {
 	if q.conn != nil && q.conn != conn {
 		panic(fmt.Sprintf("[%s] Expecting to always run on the same database handle", q.logContext))
 	}
@@ -115,21 +113,21 @@ func (q *Query) run(ctx context.Context, conn *sql.DB) (*sql.Rows, errors.WithCo
 	if q.stmt == nil {
 		stmt, err := conn.PrepareContext(ctx, q.config.Query)
 		if err != nil {
-			return nil, errors.Wrapf(q.logContext, err, "prepare query failed")
+			return nil, Wrapf(q.logContext, err, "prepare query failed")
 		}
 		q.conn = conn
 		q.stmt = stmt
 	}
 	rows, err := q.stmt.QueryContext(ctx)
-	return rows, errors.Wrap(q.logContext, err)
+	return rows, Wrap(q.logContext, err)
 }
 
 // scanDest creates a slice to scan the provided rows into, with strings for keys, float64s for values and interface{}
 // for any extra columns.
-func (q *Query) scanDest(rows *sql.Rows) ([]interface{}, errors.WithContext) {
+func (q *Query) scanDest(rows *sql.Rows) ([]interface{}, WithContext) {
 	columns, err := rows.Columns()
 	if err != nil {
-		return nil, errors.Wrap(q.logContext, err)
+		return nil, Wrap(q.logContext, err)
 	}
 
 	// Create the slice to scan the row into, with strings for keys and float64s for values.
@@ -161,7 +159,7 @@ func (q *Query) scanDest(rows *sql.Rows) ([]interface{}, errors.WithContext) {
 				missing = append(missing, c)
 			}
 		}
-		return nil, errors.Errorf(q.logContext, "column(s) %q missing from query result", missing)
+		return nil, Errorf(q.logContext, "column(s) %q missing from query result", missing)
 	}
 
 	return dest, nil
@@ -169,15 +167,15 @@ func (q *Query) scanDest(rows *sql.Rows) ([]interface{}, errors.WithContext) {
 
 // scanRow scans the current row into a map of column name to value, with string values for key columns and float64
 // values for value columns, using dest as a buffer.
-func (q *Query) scanRow(rows *sql.Rows, dest []interface{}) (map[string]interface{}, errors.WithContext) {
+func (q *Query) scanRow(rows *sql.Rows, dest []interface{}) (map[string]interface{}, WithContext) {
 	columns, err := rows.Columns()
 	if err != nil {
-		return nil, errors.Wrap(q.logContext, err)
+		return nil, Wrap(q.logContext, err)
 	}
 
 	// Scan the row content into dest.
 	if err := rows.Scan(dest...); err != nil {
-		return nil, errors.Wrapf(q.logContext, err, "scanning of query result failed")
+		return nil, Wrapf(q.logContext, err, "scanning of query result failed")
 	}
 
 	// Pick all values we're interested in into a map.
