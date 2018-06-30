@@ -3,8 +3,8 @@ package exporter
 import (
 	"fmt"
 
-	"../libs/config"
-	"../libs/errors"
+	"./config"
+	"./errors"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

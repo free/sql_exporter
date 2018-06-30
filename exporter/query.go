@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 
-	"../libs/config"
-	"../libs/errors"
+	"./config"
+	"./errors"
 	log "github.com/golang/glog"
 )
 

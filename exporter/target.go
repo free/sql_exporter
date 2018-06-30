@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"../libs/config"
-	"../libs/errors"
+	"./config"
+	"./errors"
 	go_n1ql "github.com/couchbase/go_n1ql"
 	"github.com/golang/protobuf/proto"
 	"github.com/prometheus/client_golang/prometheus"

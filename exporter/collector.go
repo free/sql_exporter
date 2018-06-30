@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"../libs/config"
-	"../libs/errors"
+	"./config"
+	"./errors"
 
 	log "github.com/golang/glog"
 	dto "github.com/prometheus/client_model/go"

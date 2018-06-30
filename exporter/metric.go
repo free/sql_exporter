@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sort"
 
-	"../libs/config"
-	"../libs/errors"
+	"./config"
+	"./errors"
 	"github.com/golang/protobuf/proto"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
