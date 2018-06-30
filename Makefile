@@ -13,7 +13,7 @@
 
 GO    := GO15VENDOREXPERIMENT=1 go
 PROMU := $(GOPATH)/bin/promu
-pkgs   = $(shell $(GO) list ./... | grep -v /Corundex/)
+pkgs  := ./
 
 PREFIX              ?= $(shell pwd)
 BIN_DIR             ?= $(shell pwd)
