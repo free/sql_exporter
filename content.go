@@ -9,7 +9,8 @@ import (
 )
 
 const (
-	docsUrl   = "https://github.com/Corundex/database_exporter#readme"
+	// DocsURL - ref to the documentation
+	DocsURL   = "https://github.com/Corundex/database_exporter#readme"
 	templates = `
     {{ define "page" -}}
       <html>
@@ -36,7 +37,7 @@ const (
           <div><a href="{{ .MetricsPath }}">Metrics</a></div>
           <div><a href="/config">Configuration</a></div>
           <div><a href="/debug/pprof">Profiling</a></div>
-          <div><a href="{{ .DocsUrl }}">Help</a></div>
+          <div><a href="{{ .DocsURL }}">Help</a></div>
         </div>
         {{template "content" .}}
       </body>
@@ -44,7 +45,7 @@ const (
     {{- end }}
 
     {{ define "content.home" -}}
-      <p>This is a <a href="{{ .DocsUrl }}">Prometheus Database Exporter</a> instance.
+      <p>This is a <a href="{{ .DocsURL }}">Prometheus Database Exporter</a> instance.
         You are probably looking for its <a href="{{ .MetricsPath }}">metrics</a> handler.</p>
     {{- end }}
 
@@ -62,7 +63,7 @@ const (
 
 type tdata struct {
 	MetricsPath string
-	DocsUrl     string
+	DocsURL     string
 
 	// `/config` only
 	Config string
@@ -88,7 +89,7 @@ func HomeHandlerFunc(metricsPath string) func(http.ResponseWriter, *http.Request
 	return func(w http.ResponseWriter, r *http.Request) {
 		homeTemplate.Execute(w, &tdata{
 			MetricsPath: metricsPath,
-			DocsUrl:     docsUrl,
+			DocsURL:     DocsURL,
 		})
 	}
 }
@@ -103,7 +104,7 @@ func ConfigHandlerFunc(metricsPath string, exporter exporter.Exporter) func(http
 		}
 		configTemplate.Execute(w, &tdata{
 			MetricsPath: metricsPath,
-			DocsUrl:     docsUrl,
+			DocsURL:     DocsURL,
 			Config:      string(config),
 		})
 	}
@@ -115,7 +116,7 @@ func HandleError(err error, metricsPath string, w http.ResponseWriter, r *http.R
 	w.WriteHeader(http.StatusInternalServerError)
 	errorTemplate.Execute(w, &tdata{
 		MetricsPath: metricsPath,
-		DocsUrl:     docsUrl,
+		DocsURL:     DocsURL,
 		Err:         err,
 	})
 }
