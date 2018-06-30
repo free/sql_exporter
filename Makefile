@@ -13,7 +13,7 @@
 
 GO    := GO15VENDOREXPERIMENT=1 go
 PROMU := $(GOPATH)/bin/promu
-pkgs   = $(shell $(GO) list ./... | grep -v vendor)
+pkgs   = ./
 
 PREFIX              ?= $(shell pwd)
 BIN_DIR             ?= $(shell pwd)
@@ -40,7 +40,7 @@ vet:
 	@$(GO) vet $(pkgs)
 
 build:
-	@echo ">> building binaries - [go build $(pkgs)]"
+	@echo ">> building binaries"
 	@go build $(pkgs)
 # build: promu
 #	@$(PROMU) build --prefix $(PREFIX)
