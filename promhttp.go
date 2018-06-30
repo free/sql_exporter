@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Corundex/database_exporter"
+	"./exporter"
 	log "github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/expfmt"
@@ -26,7 +26,7 @@ const (
 )
 
 // ExporterHandlerFor returns an http.Handler for the provided Exporter.
-func ExporterHandlerFor(exporter database_exporter.Exporter) http.Handler {
+func ExporterHandlerFor(exporter exporter.Exporter) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		ctx, cancel := contextFor(req, exporter)
 		defer cancel()
@@ -71,7 +71,7 @@ func ExporterHandlerFor(exporter database_exporter.Exporter) http.Handler {
 	})
 }
 
-func contextFor(req *http.Request, exporter database_exporter.Exporter) (context.Context, context.CancelFunc) {
+func contextFor(req *http.Request, exporter exporter.Exporter) (context.Context, context.CancelFunc) {
 	timeout := time.Duration(0)
 	configTimeout := time.Duration(exporter.Config().Globals.ScrapeTimeout)
 	// If a timeout is provided in the Prometheus header, use it.

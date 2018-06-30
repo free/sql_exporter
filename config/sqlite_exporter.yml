@@ -13,13 +13,13 @@ global:
 
 # The target to monitor and the collectors to execute on it.
 target:
-  # Data source name always has a URI schema that matches the driver name. In some cases (e.g. oracle)
+  # Data source name always has a URI schema that matches the driver name. In some cases (e.g. MySQL)
   # the schema gets dropped or replaced to match the driver expected DSN format.
-  data_source_name: 'n1ql://http://localhost:8093/@creds=[{"user":"Administrator","pass":"admin123"}]@timeout=10s'
+  data_source_name: 'sqlite3://file::memory:?mode=memory&cache=shared'
 
   # Collectors (referenced by name) to execute on the target.
-  collectors: [couchbase_metrics]
+  collectors: [sqlite_metrics]
 
 # Collector files specifies a list of globs. One collector definition is read from each matching file.
 collector_files: 
-  - "./couchbase_collectors/*.collector.yml"
+  - "./sqlite_collectors/*.collector.yml"

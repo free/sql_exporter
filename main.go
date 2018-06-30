@@ -9,7 +9,7 @@ import (
 
 	_ "net/http/pprof"
 
-	"github.com/Corundex/database_exporter"
+	"./exporter"
 	log "github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -30,7 +30,7 @@ func main() {
 		showVersion   = flag.Bool("version", false, "Print version information.")
 		listenAddress = flag.String("web.listen-address", ":9285", "Address to listen on for web interface and telemetry.")
 		metricsPath   = flag.String("web.metrics-path", "/metrics", "Path under which to expose metrics.")
-		configFile    = flag.String("config.file", "database_exporter.yml", "SQL Exporter configuration file name.")
+		configFile    = flag.String("config.file", "database_exporter.yml", "Database Exporter configuration file name.")
 	)
 
 	// Override --alsologtostderr default value.
@@ -52,7 +52,7 @@ func main() {
 
 	log.Infof("Starting Database Exporter %s %s", version.Info(), version.BuildContext())
 
-	exporter, err := database_exporter.NewExporter(*configFile)
+	exporter, err := exporter.NewExporter(*configFile)
 	if err != nil {
 		log.Fatalf("Error creating exporter: %s", err)
 	}

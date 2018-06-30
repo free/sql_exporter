@@ -1,0 +1,35 @@
+# A collector defining standard metrics for SQLite.
+#
+#
+
+collector_name: sqlite_metrics
+
+# Similar to global.min_interval, but applies to the queries defined by this collector only.
+#min_interval: 0s
+
+metrics:
+  - metric_name: dummy_metric_value
+    type: gauge
+    help: Sample query
+    values:
+      - value
+    query: |
+      select 1 as value
+
+  - metric_name: sqlite_objects_rootpage
+    type: gauge
+    help: Sample query
+    values:
+      - rootpage
+    key_labels:
+      - name
+      - tbl_name
+      - type
+    query: |
+      SELECT
+        rootpage,
+        name,
+        tbl_name,
+        type
+      FROM 
+        sqlite_master

@@ -1,4 +1,4 @@
-package database_exporter
+package exporter
 
 import (
 	"context"
@@ -8,13 +8,13 @@ import (
 
 	log "github.com/golang/glog"
 
-	_ "github.com/couchbase/go_n1ql"     // register the Coachbase driver
+	_ "github.com/couchbase/go_n1ql"     // register the Couchbase driver
 	_ "github.com/denisenkom/go-mssqldb" // register the MS-SQL driver
+	_ "github.com/go-goracle/goracle"    // register the Oracle DB driver
 	_ "github.com/go-sql-driver/mysql"   // register the MySQL driver
 	_ "github.com/kshvakov/clickhouse"   // register the ClickHouse driver
 	_ "github.com/lib/pq"                // register the PostgreSQL driver
-	// _ "g i t h u b .com/mattn/go-oci8"         // register the Oracle DB driver
-	_ "github.com/mattn/go-sqlite3" // register the SQLite3 driver
+	_ "github.com/mattn/go-sqlite3"      // register the SQLite3 driver
 )
 
 // OpenConnection extracts the driver name from the DSN (expected as the URI scheme), adjusts it where necessary (e.g.
@@ -50,20 +50,11 @@ import (
 //
 // Oracle
 //
-// Using the https://github.com/mattn/go-oci8 driver, DSN format (passed to the driver with the `oci8://` or `oracle://`` prefix):
-//   oci8://user:password@host:port/sid?param1=value1&param2=value2
-//   oracle://user:password@host:port/sid?param1=value1&param2=value2
+// Using the github.com/go-goracle/goracle driver, DSN format (passed to the driver with the `oracle://`` prefix):
 //
-// Currently the parameters supported is:
-// 1 'loc' which sets the timezone to read times in as and to marshal to when writing times to Oracle date,
-// 2 'isolation' =READONLY,SERIALIZABLE,DEFAULT
-// 3 'prefetch_rows'
-// 4 'prefetch_memory'
-// 5 'questionph' =YES,NO,TRUE,FALSE enable question-mark placeholders, default to false
-//
-// don't forget to install Oracle instant client and set variables pointing to the installed libs:
-// export LD_LIBRARY_PATH=..../instantclient_12_2
-// export PKG_CONFIG_PATH=..../instantclient_12_2
+//   oracle://user:passw@service_name
+//   oracle://username@[//]host[:port][/service_name][:server][/instance_name]
+//   oracle://user/pass@(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=tcp)(HOST=hostname)(PORT=port)))(CONNECT_DATA=(SERVICE_NAME=sn)))
 //
 // SQLite3
 //
@@ -72,7 +63,7 @@ import (
 //
 //   f.e sqlite3://file:mybase.db?cache=shared&mode=rwc
 //
-// Coachbase
+// Couchbase
 //
 // Using the github.com/couchbase/go_n1ql driver, DSN format (passed to the driver with the `n1ql://`` prefix):
 //   Connecting to the instance:
@@ -92,15 +83,13 @@ func OpenConnection(ctx context.Context, logContext, dsn string, maxConns, maxId
 	switch driver {
 	case "mysql":
 		dsn = strings.TrimPrefix(dsn, "mysql://")
-	case "clickhouse":
-		dsn = "tcp://" + strings.TrimPrefix(dsn, "clickhouse://")
-	case "oci8":
-		dsn = strings.TrimPrefix(dsn, "oci8://")
 	case "oracle":
 		dsn = strings.TrimPrefix(dsn, "oracle://")
-		driver = "oci8"
+		driver = "goracle"
 	case "sqlite3":
 		dsn = strings.TrimPrefix(dsn, "sqlite3://")
+	case "clickhouse":
+		dsn = "tcp://" + strings.TrimPrefix(dsn, "clickhouse://")
 	case "n1ql":
 		dsn = strings.TrimPrefix(dsn, "n1ql://")
 		dsn = strings.Split(dsn, "@")[0]
@@ -137,7 +126,7 @@ func OpenConnection(ctx context.Context, logContext, dsn string, maxConns, maxId
 	return conn, nil
 }
 
-// func updateCoachbaseParams(connection) {
+// func updateCouchbaseParams(connection) {
 
 // }
 

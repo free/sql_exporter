@@ -15,7 +15,7 @@ global:
 target:
   # Data source name always has a URI schema that matches the driver name. In some cases (e.g. oracle)
   # the schema gets dropped or replaced to match the driver expected DSN format.
-  data_source_name: 'oracle://user:password@host:1521/sid'
+  data_source_name: oracle://user:password@host:1521/sid
 
   # Collectors (referenced by name) to execute on the target.
   collectors: [oracle_metrics]

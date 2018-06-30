@@ -1,11 +1,11 @@
-package database_exporter
+package exporter
 
 import (
 	"context"
 	"fmt"
 	"sync"
 
-	"github.com/Corundex/database_exporter/libs/config"
+	"../libs/config"
 	"github.com/golang/protobuf/proto"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"

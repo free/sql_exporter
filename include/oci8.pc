@@ -1,9 +1,0 @@
-prefix=/opt/oracle/instantclient_12_1
-includedir=${prefix}/sdk/include
-libdir=${prefix}/
-
-Name:oci8
-Description: Oracle Instant Client
-Version: 12.1
-Cflags: -I${includedir}
-Libs: -L${libdir} -lclntsh

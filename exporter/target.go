@@ -1,4 +1,4 @@
-package database_exporter
+package exporter
 
 import (
 	"context"
@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Corundex/database_exporter/libs/config"
-	"github.com/Corundex/database_exporter/libs/errors"
+	"../libs/config"
+	"../libs/errors"
 	go_n1ql "github.com/couchbase/go_n1ql"
 	"github.com/golang/protobuf/proto"
 	"github.com/prometheus/client_golang/prometheus"
@@ -136,7 +136,7 @@ func (t *target) ping(ctx context.Context) errors.WithContext {
 	// We cannot do this only once at creation time because the sql.Open() documentation says it "may" open an actual
 	// connection, so it "may" actually fail to open a handle to a DB that's initially down.
 	if t.conn == nil {
-		setParamsForCoachbase(t.dsn)
+		setParamsForCouchbase(t.dsn)
 		conn, err := OpenConnection(ctx, t.logContext, t.dsn, t.globalConfig.MaxConns, t.globalConfig.MaxIdleConns)
 		if err != nil {
 			if err != ctx.Err() {
@@ -144,7 +144,6 @@ func (t *target) ping(ctx context.Context) errors.WithContext {
 			}
 			// if err == ctx.Err() fall through
 		} else {
-			// set context for coachbase driver
 			t.conn = conn
 		}
 	}
@@ -178,7 +177,7 @@ func boolToFloat64(value bool) float64 {
 	return 0.0
 }
 
-func setParamsForCoachbase(dsn string) {
+func setParamsForCouchbase(dsn string) {
 	idx := strings.Index(dsn, "://")
 	if idx == -1 {
 		return

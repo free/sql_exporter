@@ -2,13 +2,13 @@
 #
 #
 
-collector_name: coachbase_metrics
+collector_name: couchbase_metrics
 
 # Similar to global.min_interval, but applies to the queries defined by this collector only.
 #min_interval: 0s
 
 metrics:
-  - metric_name: coachbase_keyspaces
+  - metric_name: couchbase_keyspaces
     type: gauge
     help: Sample query
     values:
