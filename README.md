@@ -144,7 +144,7 @@ of DSNs for the latter two drivers in order for this to work:
 DB | Database Exporter expected DSN | Driver sees
 :---|:---|:---
 MySQL | `mysql://user:passw@protocol(host:port)/dbname` | `user:passw@protocol(host:port)/dbname`
-Oracle | `oracle://user:password@host:port/sid` | `user:password@host:port/sid`
+Oracle | `oracle://user/password@host:port/sid` | `user/password@host:port/sid`
 PostgreSQL | `postgres://user:passw@host:port/dbname` | *unchanged*
 SQL Server | `sqlserver://user:passw@host:port/instance` | *unchanged*
 SQLite3 | `sqlite3://file:mybase.db?cache=shared&mode=rwc` | `file:mybase.db?cache=shared&mode=rwc`
