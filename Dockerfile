@@ -8,5 +8,5 @@ RUN         tar -xzvf database_exporter.tar.gz
 
 EXPOSE      9285
 
-ENTRYPOINT  [ "/exporter/database_exporter" ]
+ENTRYPOINT  [ "/exporter/database_exporter", "-logtostderr= false" ]
 
