@@ -52,7 +52,7 @@ import (
 //
 // Using the github.com/go-goracle/goracle driver, DSN format (passed to the driver with the `oracle://`` prefix):
 //
-//   oracle://user:passw@service_name
+//   oracle://user/passw@service_name
 //   oracle://username@[//]host[:port][/service_name][:server][/instance_name]
 //   oracle://user/pass@(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=tcp)(HOST=hostname)(PORT=port)))(CONNECT_DATA=(SERVICE_NAME=sn)))
 //
