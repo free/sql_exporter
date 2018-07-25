@@ -3,7 +3,6 @@ language: go
 env:
   global:
     - PKG_CONFIG_PATH=$HOME/gopath/src/github.com/Corundex/database_exporter/include
-    - LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/oracle/instantclient_12_1
 
 script:
   - export ARCH=$(uname -i)
