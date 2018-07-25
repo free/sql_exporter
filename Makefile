@@ -45,8 +45,6 @@ build:
 	@go build -o $(package_name);\
 	  CGO_ENABLED=1 GOARCH=386 GOOS=linux go build -o $(package_name).linux.i386;\
 	  CGO_ENABLED=1 GOARCH=amd64 GOOS=linux go build -o $(package_name).linux.amd64;\
-	  CGO_ENABLED=1 GOARCH=arm64 GOOS=linux go build -o $(package_name).linux.arm64;\
-	  CGO_ENABLED=1 GOARCH=arm GOOS=linux go build -o $(package_name).linux.arm;\
     CGO_ENABLED=1 GOARCH=amd64 GOOS=windows go build -o $(package_name).win.x64.exe;\
     CGO_ENABLED=1 GOARCH=386 GOOS=windows go build -o $(package_name).win.x32.exe;\
 	  CGO_ENABLED=1 GOARCH=amd64 GOOS=darwin go build -o $(package_name).darwin.amd64
