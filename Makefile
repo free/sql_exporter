@@ -42,10 +42,13 @@ vet:
 build:
 	@echo ">> building binaries"
 	@go build $(pkgs)
-  @GOOS=386 GOARCH=linux go build $(pkgs).i386
-	@GOOS=amd64 GOARCH=linux go build $(pkgs).amd64
-	@GOOS=arm64 GOARCH=linux go build $(pkgs).arm64
-  @GOOS=amd64 GOARCH=windows go build $(pkgs).amd64.exe
+  @GOOS=386 GOARCH=linux go build $(pkgs).linux.i386
+	@GOOS=amd64 GOARCH=linux go build $(pkgs).linux.amd64
+	@GOOS=arm64 GOARCH=linux go build $(pkgs).linux.arm64
+	@GOOS=arm GOARCH=linux go build $(pkgs).linux.arm
+  @GOOS=amd64 GOARCH=windows go build $(pkgs).win.x64.exe
+  @GOOS=386 GOARCH=windows go build $(pkgs).win.x32.exe
+	@GOOS=amd64 GOARCH=darwin go build $(pkgs).darwin.amd64
 
 tarball: promu
 	@echo ">> building release tarball"
