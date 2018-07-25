@@ -42,14 +42,14 @@ vet:
 
 build:
 	@echo ">> building binaries"
-	@go build $(pkgs) -o $(package_name)
-  @GOARCH=386 GOOS=linux go build $(pkgs) -o $(package_name).linux.i386
-	@GOARCH=amd64 GOOS=linux go build $(pkgs) -o $(package_name).linux.amd64
-	@GOARCH=arm64 GOOS=linux go build $(pkgs) -o $(package_name).linux.arm64
-	@GOARCH=arm GOOS=linux go build $(pkgs) -o $(package_name).linux.arm
-  @GOARCH=amd64 GOOS=windows go build $(pkgs) -o $(package_name).win.x64.exe
-  @GOARCH=386 GOOS=windows go build $(pkgs) -o $(package_name).win.x32.exe
-	@GOARCH=amd64 GOOS=darwin go build $(pkgs) -o $(package_name).darwin.amd64
+	@go build -o $(package_name)
+  @GOARCH=386 GOOS=linux go build -o $(package_name).linux.i386
+	@GOARCH=amd64 GOOS=linux go build -o $(package_name).linux.amd64
+	@GOARCH=arm64 GOOS=linux go build -o $(package_name).linux.arm64
+	@GOARCH=arm GOOS=linux go build -o $(package_name).linux.arm
+  @GOARCH=amd64 GOOS=windows go build -o $(package_name).win.x64.exe
+  @GOARCH=386 GOOS=windows go build -o $(package_name).win.x32.exe
+	@GOARCH=amd64 GOOS=darwin go build -o $(package_name).darwin.amd64
 
 tarball: promu
 	@echo ">> building release tarball"
