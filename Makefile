@@ -42,8 +42,10 @@ vet:
 build:
 	@echo ">> building binaries"
 	@go build $(pkgs)
-# build: promu
-#	@$(PROMU) build --prefix $(PREFIX)
+  @GOOS=386 GOARCH=linux go build $(pkgs).i386
+	@GOOS=amd64 GOARCH=linux go build $(pkgs).amd64
+	@GOOS=arm64 GOARCH=linux go build $(pkgs).arm64
+  @GOOS=amd64 GOARCH=windows go build $(pkgs).amd64.exe
 
 tarball: promu
 	@echo ">> building release tarball"
