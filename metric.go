@@ -50,6 +50,14 @@ func NewMetricFamily(logContext string, mc *config.MetricConfig, constLabels []*
 		labels = append(labels, mc.ValueLabel)
 	}
 
+	for _, label := range mc.StaticLabels {
+		constLabels = append(constLabels, &dto.LabelPair{
+			Name:  proto.String(label.Name),
+			Value: proto.String(label.Value),
+		})
+	}
+	sort.Sort(prometheus.LabelPairSorter(constLabels))
+
 	return &MetricFamily{
 		config:      mc,
 		constLabels: constLabels,
