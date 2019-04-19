@@ -97,6 +97,15 @@ metrics:
       FROM sys.dm_os_performance_counters
       WHERE [counter_name] = 'Buffer cache hit ratio'
 
+  - metric_name: mssql_checkpoint_pages_sec
+    type: gauge
+    help: 'Checkpoint Pages Per Second'
+    values: [cntr_value]
+    query: |
+      SELECT cntr_value
+      FROM sys.dm_os_performance_counters
+      WHERE [counter_name] = 'Checkpoint pages/sec'
+
   #
   # Collected from sys.dm_io_virtual_file_stats
   #
