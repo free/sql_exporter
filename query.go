@@ -83,8 +83,10 @@ func (q *Query) Collect(ctx context.Context, conn *sql.DB, ch chan<- Metric) {
 		ch <- NewInvalidMetric(err)
 		return
 	}
-	defer rows.Close()
-
+	defer func() {
+		q.stmt.Close()
+		rows.Close()
+	}()
 	dest, err := q.scanDest(rows)
 	if err != nil {
 		// TODO: increment an error counter
