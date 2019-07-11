@@ -142,6 +142,9 @@ type GlobalConfig struct {
 	TimeoutOffset model.Duration `yaml:"scrape_timeout_offset"` // offset to subtract from timeout in seconds
 	MaxConns      int            `yaml:"max_connections"`       // maximum number of open connections to any one target
 	MaxIdleConns  int            `yaml:"max_idle_connections"`  // maximum number of idle connections to any one target
+	MaxLabelNameLen int          `yaml:"max_label_name_len"`    // maximum length of label name
+	MaxLabelValueLen int         `yaml:"max_label_value_len"`   // maximum length of label value
+	MaxJsonLabels int            `yaml:"max_json_labels"`       // maximum number of labels extracted from json column
 
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline" json:"-"`
@@ -157,6 +160,9 @@ func (g *GlobalConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	g.TimeoutOffset = model.Duration(500 * time.Millisecond)
 	g.MaxConns = 3
 	g.MaxIdleConns = 3
+	g.MaxLabelNameLen = 25
+	g.MaxLabelValueLen = 50
+	g.MaxJsonLabels = 10
 
 	type plain GlobalConfig
 	if err := unmarshal((*plain)(g)); err != nil {
@@ -371,6 +377,7 @@ type MetricConfig struct {
 	Help         string   `yaml:"help"`                  // the Prometheus metric help text
 	KeyLabels    []string `yaml:"key_labels,omitempty"`  // expose these columns as labels
 	ValueLabel   string   `yaml:"value_label,omitempty"` // with multiple value columns, map their names under this label
+	JsonLabels   string   `yaml:"json_labels,omitempty"` // expose content of given json column as labels
 	Values       []string `yaml:"values"`                // expose each of these columns as a value, keyed by column name
 	QueryLiteral string   `yaml:"query,omitempty"`       // a literal query
 	QueryRef     string   `yaml:"query_ref,omitempty"`   // references a query in the query map

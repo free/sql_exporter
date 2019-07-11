@@ -68,7 +68,7 @@ func NewTarget(
 
 	collectors := make([]Collector, 0, len(ccs))
 	for _, cc := range ccs {
-		c, err := NewCollector(logContext, cc, constLabelPairs)
+		c, err := NewCollector(logContext, cc, constLabelPairs, gc)
 		if err != nil {
 			return nil, err
 		}
@@ -105,7 +105,7 @@ func (t *target) Collect(ctx context.Context, ch chan<- Metric) {
 	}
 	if t.name != "" {
 		// Export the target's `up` metric as early as we know what it should be.
-		ch <- NewMetric(t.upDesc, boolToFloat64(targetUp))
+		ch <- NewMetric(t.upDesc, boolToFloat64(targetUp), nil)
 	}
 
 	var wg sync.WaitGroup
@@ -125,7 +125,7 @@ func (t *target) Collect(ctx context.Context, ch chan<- Metric) {
 
 	if t.name != "" {
 		// And export a `scrape duration` metric once we're done scraping.
-		ch <- NewMetric(t.scrapeDurationDesc, float64(time.Since(scrapeStart))*1e-9)
+		ch <- NewMetric(t.scrapeDurationDesc, float64(time.Since(scrapeStart))*1e-9, nil)
 	}
 }
 

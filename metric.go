@@ -3,12 +3,15 @@ package sql_exporter
 import (
 	"fmt"
 	"sort"
+	"math"
+	"encoding/json"
 
 	"github.com/free/sql_exporter/config"
 	"github.com/free/sql_exporter/errors"
 	"github.com/golang/protobuf/proto"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
+	log "github.com/golang/glog"
 )
 
 // MetricDesc is a descriptor for a family of metrics, sharing the same name, help, labes, type.
@@ -19,6 +22,7 @@ type MetricDesc interface {
 	ConstLabels() []*dto.LabelPair
 	Labels() []string
 	LogContext() string
+	GlobalConfig() *config.GlobalConfig
 }
 
 //
@@ -27,14 +31,15 @@ type MetricDesc interface {
 
 // MetricFamily implements MetricDesc for SQL metrics, with logic for populating its labels and values from sql.Rows.
 type MetricFamily struct {
-	config      *config.MetricConfig
-	constLabels []*dto.LabelPair
-	labels      []string
-	logContext  string
+	config       *config.MetricConfig
+	constLabels  []*dto.LabelPair
+	labels       []string
+	logContext   string
+	globalConfig *config.GlobalConfig
 }
 
 // NewMetricFamily creates a new MetricFamily with the given metric config and const labels (e.g. job and instance).
-func NewMetricFamily(logContext string, mc *config.MetricConfig, constLabels []*dto.LabelPair) (*MetricFamily, errors.WithContext) {
+func NewMetricFamily(logContext string, mc *config.MetricConfig, constLabels []*dto.LabelPair, gc *config.GlobalConfig) (*MetricFamily, errors.WithContext) {
 	logContext = fmt.Sprintf("%s, metric=%q", logContext, mc.Name)
 
 	if len(mc.Values) == 0 {
@@ -51,15 +56,42 @@ func NewMetricFamily(logContext string, mc *config.MetricConfig, constLabels []*
 	}
 
 	return &MetricFamily{
-		config:      mc,
-		constLabels: constLabels,
-		labels:      labels,
-		logContext:  logContext,
+		config:       mc,
+		constLabels:  constLabels,
+		labels:       labels,
+		logContext:   logContext,
+		globalConfig: gc,
 	}, nil
 }
 
 // Collect is the equivalent of prometheus.Collector.Collect() but takes a Query output map to populate values from.
 func (mf MetricFamily) Collect(row map[string]interface{}, ch chan<- Metric) {
+	var userLabels []*dto.LabelPair
+
+	// TODO: move to func()
+	if mf.config.JsonLabels != "" && row[mf.config.JsonLabels].(string) != "" {
+		var jsonLabels map[string]string
+
+		err := json.Unmarshal([]byte(row[mf.config.JsonLabels].(string)), &jsonLabels)
+		// errors silently ignored for now
+		if err != nil {
+			log.Warningf("[%s] Failed to parse JSON labels returned by query - %s", mf.logContext, err)
+		} else {
+			userLabelsMax := int(math.Min(float64(len(jsonLabels)), float64(mf.globalConfig.MaxJsonLabels)))
+			userLabels = make([]*dto.LabelPair, userLabelsMax)
+
+			idx := 0
+			for name, value := range jsonLabels {
+				// limit labels
+				if idx >= userLabelsMax {
+					break
+				}
+				userLabels[idx] = makeLabelPair(&mf, name, value)
+				idx = idx + 1
+			}
+		}
+	}
+
 	labelValues := make([]string, len(mf.labels))
 	for i, label := range mf.config.KeyLabels {
 		labelValues[i] = row[label].(string)
@@ -69,7 +101,7 @@ func (mf MetricFamily) Collect(row map[string]interface{}, ch chan<- Metric) {
 			labelValues[len(labelValues)-1] = v
 		}
 		value := row[v].(float64)
-		ch <- NewMetric(&mf, value, labelValues...)
+		ch <- NewMetric(&mf, value, labelValues, userLabels...)
 	}
 }
 
@@ -101,6 +133,11 @@ func (mf MetricFamily) Labels() []string {
 // LogContext implements MetricDesc.
 func (mf MetricFamily) LogContext() string {
 	return mf.logContext
+}
+
+// GlobalConfig implements MetricDesc.
+func (mf MetricFamily) GlobalConfig() *config.GlobalConfig {
+	return mf.globalConfig
 }
 
 //
@@ -160,6 +197,11 @@ func (a automaticMetricDesc) LogContext() string {
 	return a.logContext
 }
 
+// GlobalConfig implements MetricDesc.
+func (a automaticMetricDesc) GlobalConfig() *config.GlobalConfig {
+	return nil
+}
+
 //
 // Metric
 //
@@ -173,14 +215,14 @@ type Metric interface {
 // NewMetric returns a metric with one fixed value that cannot be changed.
 //
 // NewMetric panics if the length of labelValues is not consistent with desc.labels().
-func NewMetric(desc MetricDesc, value float64, labelValues ...string) Metric {
+func NewMetric(desc MetricDesc, value float64, labelValues []string, userLabels ...*dto.LabelPair) Metric {
 	if len(desc.Labels()) != len(labelValues) {
 		panic(fmt.Sprintf("[%s] expected %d labels, got %d", desc.LogContext(), len(desc.Labels()), len(labelValues)))
 	}
 	return &constMetric{
 		desc:       desc,
 		val:        value,
-		labelPairs: makeLabelPairs(desc, labelValues),
+		labelPairs: makeLabelPairs(desc, labelValues, userLabels),
 	}
 }
 
@@ -210,26 +252,41 @@ func (m *constMetric) Write(out *dto.Metric) errors.WithContext {
 	return nil
 }
 
-func makeLabelPairs(desc MetricDesc, labelValues []string) []*dto.LabelPair {
+func makeLabelPair(desc MetricDesc, label string, value string) *dto.LabelPair {
+	config := desc.GlobalConfig()
+	if config != nil {
+		if (len(label) > config.MaxLabelNameLen) {
+			label = label[:config.MaxLabelNameLen]
+		}
+		if (len(value) > config.MaxLabelValueLen) {
+			value = value[:config.MaxLabelValueLen]
+		}
+	}
+
+	return &dto.LabelPair{
+		Name:  proto.String(label),
+		Value: proto.String(value),
+	}
+}
+
+func makeLabelPairs(desc MetricDesc, labelValues []string, userLabels []*dto.LabelPair) []*dto.LabelPair {
 	labels := desc.Labels()
 	constLabels := desc.ConstLabels()
 
-	totalLen := len(labels) + len(constLabels)
+	totalLen := len(labels) + len(constLabels) + len(userLabels)
 	if totalLen == 0 {
 		// Super fast path.
 		return nil
 	}
-	if len(labels) == 0 {
+	if len(labels) == 0 && len(userLabels) == 0{
 		// Moderately fast path.
 		return constLabels
 	}
 	labelPairs := make([]*dto.LabelPair, 0, totalLen)
 	for i, label := range labels {
-		labelPairs = append(labelPairs, &dto.LabelPair{
-			Name:  proto.String(label),
-			Value: proto.String(labelValues[i]),
-		})
+		labelPairs = append(labelPairs, makeLabelPair(desc, label, labelValues[i]))
 	}
+	labelPairs = append(labelPairs, userLabels...)
 	labelPairs = append(labelPairs, constLabels...)
 	sort.Sort(prometheus.LabelPairSorter(labelPairs))
 	return labelPairs
