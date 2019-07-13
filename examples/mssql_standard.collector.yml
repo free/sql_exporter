@@ -88,6 +88,24 @@ metrics:
       FROM sys.dm_os_performance_counters WITH (NOLOCK)
       WHERE counter_name = 'Log Growths' AND instance_name <> '_Total'
 
+  - metric_name: mssql_buffer_cache_hit_ratio
+    type: gauge
+    help: 'Ratio of requests that hit the buffer cache'
+    values: [cntr_value]
+    query: |
+      SELECT cntr_value
+      FROM sys.dm_os_performance_counters
+      WHERE [counter_name] = 'Buffer cache hit ratio'
+
+  - metric_name: mssql_checkpoint_pages_sec
+    type: gauge
+    help: 'Checkpoint Pages Per Second'
+    values: [cntr_value]
+    query: |
+      SELECT cntr_value
+      FROM sys.dm_os_performance_counters
+      WHERE [counter_name] = 'Checkpoint pages/sec'
+
   #
   # Collected from sys.dm_io_virtual_file_stats
   #
