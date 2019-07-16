@@ -82,7 +82,7 @@ func (mf MetricFamily) Collect(row map[string]interface{}, ch chan<- Metric) {
 			labelValues[len(labelValues)-1] = v
 		}
 		value := row[v].(float64)
-		ch <- NewMetric(&mf, value, labelValues, userLabels...)
+		ch <- NewMetric(&mf, value, labelValues, userLabels)
 	}
 }
 
@@ -196,7 +196,7 @@ type Metric interface {
 // NewMetric returns a metric with one fixed value that cannot be changed.
 //
 // NewMetric panics if the length of labelValues is not consistent with desc.labels().
-func NewMetric(desc MetricDesc, value float64, labelValues []string, userLabels ...*dto.LabelPair) Metric {
+func NewMetric(desc MetricDesc, value float64, labelValues []string, userLabels []*dto.LabelPair) Metric {
 	if len(desc.Labels()) != len(labelValues) {
 		panic(fmt.Sprintf("[%s] expected %d labels, got %d", desc.LogContext(), len(desc.Labels()), len(labelValues)))
 	}
@@ -234,12 +234,11 @@ func (m *constMetric) Write(out *dto.Metric) errors.WithContext {
 }
 
 func parseJsonLabels(desc MetricDesc, labels string) []*dto.LabelPair {
-	var userLabels []*dto.LabelPair
 	var jsonLabels map[string]string
 
 	config := desc.GlobalConfig()
 	maxJsonLabels := 0
-	if (config != nil) {
+	if config != nil {
 		maxJsonLabels = config.MaxJsonLabels
 	}
 
@@ -247,19 +246,22 @@ func parseJsonLabels(desc MetricDesc, labels string) []*dto.LabelPair {
 	// errors are logged but ignored
 	if err != nil {
 		log.Warningf("[%s] Failed to parse JSON labels returned by query - %s", desc.LogContext(), err)
-	} else {
-		userLabelsMax := int(math.Min(float64(len(jsonLabels)), float64(maxJsonLabels)))
-		userLabels = make([]*dto.LabelPair, userLabelsMax)
+		return nil
+	}
 
-		idx := 0
-		for name, value := range jsonLabels {
-			// limit label count
-			if idx >= maxJsonLabels {
-				break
-			}
-			userLabels[idx] = makeLabelPair(desc, name, value)
-			idx = idx + 1
+//	var userLabels []*dto.LabelPair
+	userLabelsMax := int(math.Min(float64(len(jsonLabels)), float64(maxJsonLabels)))
+	userLabels := make([]*dto.LabelPair, 0, userLabelsMax)
+
+	idx := 0
+	for name, value := range jsonLabels {
+		// limit label count
+		if idx >= maxJsonLabels {
+			log.Warningf("[%s] Count of JSON labels is limited to %d, truncating", desc.LogContext(), maxJsonLabels)
+			break
 		}
+		userLabels = append(userLabels, makeLabelPair(desc, name, value))
+		idx = idx + 1
 	}
 	return userLabels
 }
