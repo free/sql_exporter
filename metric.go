@@ -70,31 +70,12 @@ func (mf MetricFamily) Collect(row map[string]interface{}, ch chan<- Metric) {
 
 	// TODO: move to func()
 	if mf.config.JsonLabels != "" && row[mf.config.JsonLabels].(string) != "" {
-		var jsonLabels map[string]string
-
-		err := json.Unmarshal([]byte(row[mf.config.JsonLabels].(string)), &jsonLabels)
-		// errors silently ignored for now
-		if err != nil {
-			log.Warningf("[%s] Failed to parse JSON labels returned by query - %s", mf.logContext, err)
-		} else {
-			userLabelsMax := int(math.Min(float64(len(jsonLabels)), float64(mf.globalConfig.MaxJsonLabels)))
-			userLabels = make([]*dto.LabelPair, userLabelsMax)
-
-			idx := 0
-			for name, value := range jsonLabels {
-				// limit labels
-				if idx >= userLabelsMax {
-					break
-				}
-				userLabels[idx] = makeLabelPair(&mf, name, value)
-				idx = idx + 1
-			}
-		}
+		userLabels = parseJsonLabels(mf, row[mf.config.JsonLabels].(string))
 	}
 
-	labelValues := make([]string, len(mf.labels))
-	for i, label := range mf.config.KeyLabels {
-		labelValues[i] = row[label].(string)
+	labelValues := make([]string, 0, len(mf.labels))
+	for _, label := range mf.config.KeyLabels {
+		labelValues = append(labelValues, row[label].(string))
 	}
 	for _, v := range mf.config.Values {
 		if mf.config.ValueLabel != "" {
@@ -250,6 +231,37 @@ func (m *constMetric) Write(out *dto.Metric) errors.WithContext {
 		return errors.Errorf(m.desc.LogContext(), "encountered unknown type %v", t)
 	}
 	return nil
+}
+
+func parseJsonLabels(desc MetricDesc, labels string) []*dto.LabelPair {
+	var userLabels []*dto.LabelPair
+	var jsonLabels map[string]string
+
+	config := desc.GlobalConfig()
+	maxJsonLabels := 0
+	if (config != nil) {
+		maxJsonLabels = config.MaxJsonLabels
+	}
+
+	err := json.Unmarshal([]byte(labels), &jsonLabels)
+	// errors are logged but ignored
+	if err != nil {
+		log.Warningf("[%s] Failed to parse JSON labels returned by query - %s", desc.LogContext(), err)
+	} else {
+		userLabelsMax := int(math.Min(float64(len(jsonLabels)), float64(maxJsonLabels)))
+		userLabels = make([]*dto.LabelPair, userLabelsMax)
+
+		idx := 0
+		for name, value := range jsonLabels {
+			// limit label count
+			if idx >= maxJsonLabels {
+				break
+			}
+			userLabels[idx] = makeLabelPair(desc, name, value)
+			idx = idx + 1
+		}
+	}
+	return userLabels
 }
 
 func makeLabelPair(desc MetricDesc, label string, value string) *dto.LabelPair {
