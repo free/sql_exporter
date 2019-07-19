@@ -23,6 +23,23 @@ metrics when queried more frequently than the configured interval.
 Get Prometheus SQL Exporter, either as a [packaged release](https://github.com/free/sql_exporter/releases/latest), as a [Docker image](https://hub.docker.com/r/githubfree/sql_exporter) or
 build it yourself:
 
+## Using Docker
+
+```
+docker run \
+  -v /path/to/config/sql_exporter/sql_exporter.yml:/config/sql_exporter.yml \
+  -v /path/to/config/sql_exporter/mssql_standard.collector.yml:/config/mssql_standard.collector.yml \
+  -e CONFIG=/config/sql_exporter.yml \
+  -d \
+  -p 9399:9399 \
+  --name free-sql_exporter \
+  --restart always \
+  githubfree/sql_exporter
+
+```
+
+## From Source
+
 ```
 $ go install github.com/free/sql_exporter/cmd/sql_exporter
 ```
