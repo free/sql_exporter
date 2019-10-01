@@ -354,8 +354,9 @@ func (c *CollectorConfig) UnmarshalYAML(unmarshal func(interface{}) error) error
 		} else {
 			// For literal queries generate a QueryConfig with a name based off collector and metric name.
 			metric.query = &QueryConfig{
-				Name:  metric.Name,
-				Query: metric.QueryLiteral,
+				Name:                metric.Name,
+				Query:               metric.QueryLiteral,
+				NoPreparedStatement: metric.NoPreparedStatement,
 			}
 		}
 	}
@@ -374,6 +375,8 @@ type MetricConfig struct {
 	Values       []string `yaml:"values"`                // expose each of these columns as a value, keyed by column name
 	QueryLiteral string   `yaml:"query,omitempty"`       // a literal query
 	QueryRef     string   `yaml:"query_ref,omitempty"`   // references a query in the query map
+
+	NoPreparedStatement bool `yaml:"no_prepared_statement,omitempty"` // do not prepare statement
 
 	valueType prometheus.ValueType // TypeString converted to prometheus.ValueType
 	query     *QueryConfig         // QueryConfig resolved from QueryRef or generated from Query
@@ -454,6 +457,8 @@ func (m *MetricConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 type QueryConfig struct {
 	Name  string `yaml:"query_name"` // the query name, to be referenced via `query_ref`
 	Query string `yaml:"query"`      // the named query
+
+	NoPreparedStatement bool `yaml:"no_prepared_statement,omitempty"` // do not prepare statement
 
 	metrics []*MetricConfig // metrics referencing this query
 

@@ -112,6 +112,11 @@ func (q *Query) run(ctx context.Context, conn *sql.DB) (*sql.Rows, errors.WithCo
 		panic(fmt.Sprintf("[%s] Expecting to always run on the same database handle", q.logContext))
 	}
 
+	if q.config.NoPreparedStatement {
+		rows, err := conn.QueryContext(ctx, q.config.Query)
+		return rows, errors.Wrap(q.logContext, err)
+	}
+
 	if q.stmt == nil {
 		stmt, err := conn.PrepareContext(ctx, q.config.Query)
 		if err != nil {
