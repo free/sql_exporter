@@ -13,10 +13,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kshvakov/clickhouse/lib/binary"
-	"github.com/kshvakov/clickhouse/lib/data"
-	"github.com/kshvakov/clickhouse/lib/protocol"
-	"github.com/kshvakov/clickhouse/lib/types"
+	"github.com/ClickHouse/clickhouse-go/lib/binary"
+	"github.com/ClickHouse/clickhouse-go/lib/column"
+	"github.com/ClickHouse/clickhouse-go/lib/data"
+	"github.com/ClickHouse/clickhouse-go/lib/protocol"
+	"github.com/ClickHouse/clickhouse-go/lib/types"
+)
+
+type (
+	Date     = types.Date
+	DateTime = types.DateTime
+	UUID     = types.UUID
 )
 
 var (
@@ -40,6 +47,7 @@ type clickhouse struct {
 	buffer        *bufio.Writer
 	decoder       *binary.Decoder
 	encoder       *binary.Encoder
+	settings      *querySettings
 	compress      bool
 	blockSize     int
 	inTransaction bool
@@ -141,7 +149,7 @@ func (ch *clickhouse) Commit() error {
 		if err := ch.writeBlock(&data.Block{}); err != nil {
 			return err
 		}
-		if err := ch.buffer.Flush(); err != nil {
+		if err := ch.encoder.Flush(); err != nil {
 			return err
 		}
 		return ch.process()
@@ -165,21 +173,20 @@ func (ch *clickhouse) Rollback() error {
 
 func (ch *clickhouse) CheckNamedValue(nv *driver.NamedValue) error {
 	switch nv.Value.(type) {
-	case IP, *types.Array, UUID:
+	case column.IP, column.UUID:
 		return nil
 	case nil, []byte, int8, int16, int32, int64, uint8, uint16, uint32, uint64, float32, float64, string, time.Time:
 		return nil
 	}
-
 	switch v := nv.Value.(type) {
 	case
 		[]int, []int8, []int16, []int32, []int64,
 		[]uint, []uint8, []uint16, []uint32, []uint64,
 		[]float32, []float64,
 		[]string:
-		nv.Value = types.NewArray(v)
-	case net.IP:
-		nv.Value = IP(v)
+		return nil
+	case net.IP, *net.IP:
+		return nil
 	case driver.Valuer:
 		value, err := v.Value()
 		if err != nil {
@@ -188,6 +195,8 @@ func (ch *clickhouse) CheckNamedValue(nv *driver.NamedValue) error {
 		nv.Value = value
 	default:
 		switch value := reflect.ValueOf(nv.Value); value.Kind() {
+		case reflect.Slice:
+			return nil
 		case reflect.Bool:
 			nv.Value = uint8(0)
 			if value.Bool() {
@@ -275,10 +284,16 @@ func (ch *clickhouse) process() error {
 
 func (ch *clickhouse) cancel() error {
 	ch.logf("[cancel request]")
-	if err := ch.encoder.Uvarint(protocol.ClientCancel); err != nil {
-		return err
+	// even if we fail to write the cancel, we still need to close
+	err := ch.encoder.Uvarint(protocol.ClientCancel)
+	if err == nil {
+		err = ch.encoder.Flush()
 	}
-	return ch.conn.Close()
+	// return the close error if there was one, otherwise return the write error
+	if cerr := ch.conn.Close(); cerr != nil {
+		return cerr
+	}
+	return err
 }
 
 func (ch *clickhouse) watchCancel(ctx context.Context) func() {

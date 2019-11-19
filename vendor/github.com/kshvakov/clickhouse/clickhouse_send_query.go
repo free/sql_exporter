@@ -1,8 +1,8 @@
 package clickhouse
 
 import (
-	"github.com/kshvakov/clickhouse/lib/data"
-	"github.com/kshvakov/clickhouse/lib/protocol"
+	"github.com/ClickHouse/clickhouse-go/lib/data"
+	"github.com/ClickHouse/clickhouse-go/lib/protocol"
 )
 
 func (ch *clickhouse) sendQuery(query string) error {
@@ -29,7 +29,15 @@ func (ch *clickhouse) sendQuery(query string) error {
 		ch.encoder.String("")
 	}
 
-	if err := ch.encoder.String(""); err != nil { // settings
+	// the settings are written as list of contiguous name-value pairs, finished with empty name
+	if !ch.settings.IsEmpty() {
+		ch.logf("[query settings] %s", ch.settings.settingsStr)
+		if err := ch.settings.Serialize(ch.encoder); err != nil {
+			return err
+		}
+	}
+	// empty string is a marker of the end of the settings
+	if err := ch.encoder.String(""); err != nil {
 		return err
 	}
 	if err := ch.encoder.Uvarint(protocol.StateComplete); err != nil {
@@ -48,5 +56,5 @@ func (ch *clickhouse) sendQuery(query string) error {
 	if err := ch.writeBlock(&data.Block{}); err != nil {
 		return err
 	}
-	return ch.buffer.Flush()
+	return ch.encoder.Flush()
 }

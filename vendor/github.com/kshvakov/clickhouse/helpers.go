@@ -10,55 +10,33 @@ import (
 	"time"
 )
 
-// Truncate timezone
-//
-//   clickhouse.Date(time.Date(2017, 1, 1, 0, 0, 0, 0, time.Local)) -> time.Date(2017, 1, 1, 0, 0, 0, 0, time.UTC)
-type Date time.Time
-
-func (date Date) Value() (driver.Value, error) {
-	return date.convert(), nil
-}
-
-func (date Date) convert() time.Time {
-	return time.Date(time.Time(date).Year(), time.Time(date).Month(), time.Time(date).Day(), 0, 0, 0, 0, time.UTC)
-}
-
-// Truncate timezone
-//
-//   clickhouse.DateTime(time.Date(2017, 1, 1, 0, 0, 0, 0, time.Local)) -> time.Date(2017, 1, 1, 0, 0, 0, 0, time.UTC)
-type DateTime time.Time
-
-func (datetime DateTime) Value() (driver.Value, error) {
-	return datetime.convert(), nil
-}
-
-func (datetime DateTime) convert() time.Time {
-	return time.Date(
-		time.Time(datetime).Year(),
-		time.Time(datetime).Month(),
-		time.Time(datetime).Day(),
-		time.Time(datetime).Hour(),
-		time.Time(datetime).Minute(),
-		time.Time(datetime).Second(),
-		0,
-		time.UTC,
-	)
-}
-
 func numInput(query string) int {
+
 	var (
-		count          int
-		args           = make(map[string]struct{})
-		reader         = bytes.NewReader([]byte(query))
-		quote, keyword bool
+		count         int
+		args          = make(map[string]struct{})
+		reader        = bytes.NewReader([]byte(query))
+		quote, gravis bool
+		keyword       bool
+		inBetween     bool
+		like          = newMatcher("like")
+		limit         = newMatcher("limit")
+		between       = newMatcher("between")
+		and           = newMatcher("and")
 	)
 	for {
 		if char, _, err := reader.ReadRune(); err == nil {
 			switch char {
-			case '\'', '`':
-				quote = !quote
+			case '\'':
+				if !gravis {
+					quote = !quote
+				}
+			case '`':
+				if !quote {
+					gravis = !gravis
+				}
 			}
-			if quote {
+			if quote || gravis {
 				continue
 			}
 			switch {
@@ -77,11 +55,20 @@ func numInput(query string) int {
 				char == '>',
 				char == '(',
 				char == ',',
-				char == '%',
 				char == '[':
 				keyword = true
 			default:
-				keyword = keyword && (char == ' ' || char == '\t' || char == '\n')
+				if limit.matchRune(char) || like.matchRune(char) {
+					keyword = true
+				} else if between.matchRune(char) {
+					keyword = true
+					inBetween = true
+				} else if inBetween && and.matchRune(char) {
+					keyword = true
+					inBetween = false
+				} else {
+					keyword = keyword && (char == ' ' || char == '\t' || char == '\n')
+				}
 			}
 		} else {
 			break

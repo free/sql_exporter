@@ -56,7 +56,7 @@ Other supported formats are listed below.
 * `hostNameInCertificate` - Specifies the Common Name (CN) in the server certificate. Default value is the server host.
 * `ServerSPN` - The kerberos SPN (Service Principal Name) for the server. Default is MSSQLSvc/host:port.
 * `Workstation ID` - The workstation name (default is the host name)
-* `ApplicationIntent` - Can be given the value `ReadOnly` to initiate a read-only connection to an Availability Group listener.
+* `ApplicationIntent` - Can be given the value `ReadOnly` to initiate a read-only connection to an Availability Group listener. The `database` must be specified when connecting with `Application Intent` set to `ReadOnly`. 
 
 ### The connection string can be specified in one of three formats:
 
@@ -113,11 +113,94 @@ To run a stored procedure, set the query text to the procedure name:
 var account = "abc"
 _, err := db.ExecContext(ctx, "sp_RunMe",
 	sql.Named("ID", 123),
-	sql.Out{Dest{sql.Named("Account", &account)}
+	sql.Named("Account", sql.Out{Dest: &account}),
 )
 ```
 
-## Statement Parameters
+## Reading Output Parameters from a Stored Procedure with Resultset
+
+To read output parameters from a stored procedure with resultset, make sure you read all the rows before reading the output parameters:
+```go
+sqltextcreate := `
+CREATE PROCEDURE spwithoutputandrows
+	@bitparam BIT OUTPUT
+AS BEGIN
+	SET @bitparam = 1
+	SELECT 'Row 1'
+END
+`
+var bitout int64
+rows, err := db.QueryContext(ctx, "spwithoutputandrows", sql.Named("bitparam", sql.Out{Dest: &bitout}))
+var strrow string
+for rows.Next() {
+	err = rows.Scan(&strrow)
+}
+fmt.Printf("bitparam is %d", bitout)
+```
+
+## Caveat for local temporary tables
+
+Due to protocol limitations, temporary tables will only be allocated on the connection
+as a result of executing a query with zero parameters. The following query
+will, due to the use of a parameter, execute in its own session,
+and `#mytemp` will be de-allocated right away:
+
+```go
+conn, err := pool.Conn(ctx)
+defer conn.Close()
+_, err := conn.ExecContext(ctx, "select @p1 as x into #mytemp", 1)
+// at this point #mytemp is already dropped again as the session of the ExecContext is over
+```
+
+To work around this, always explicitly create the local temporary
+table in a query without any parameters. As a special case, the driver
+will then be able to execute the query directly on the
+connection-scoped session. The following example works:
+
+```go
+conn, err := pool.Conn(ctx)
+
+// Set us up so that temp table is always cleaned up, since conn.Close()
+// merely returns conn to pool, rather than actually closing the connection.
+defer func() {
+	_, _ = conn.ExecContext(ctx, "drop table #mytemp")  // always clean up
+	conn.Close() // merely returns conn to pool
+}()
+
+
+// Since we not pass any parameters below, the query will execute on the scope of
+// the connection and succeed in creating the table.
+_, err := conn.ExecContext(ctx, "create table #mytemp ( x int )")
+
+// #mytemp is now available even if you pass parameters
+_, err := conn.ExecContext(ctx, "insert into #mytemp (x) values (@p1)", 1)
+
+```
+
+## Return Status
+
+To get the procedure return status, pass into the parameters a
+`*mssql.ReturnStatus`. For example:
+```
+var rs mssql.ReturnStatus
+_, err := db.ExecContext(ctx, "theproc", &rs)
+log.Printf("status=%d", rs)
+```
+
+or
+
+```
+var rs mssql.ReturnStatus
+_, err := db.QueryContext(ctx, "theproc", &rs)
+for rows.Next() {
+	err = rows.Scan(&val)
+}
+log.Printf("status=%d", rs)
+```
+
+Limitation: ReturnStatus cannot be retrieved using `QueryRow`.
+
+## Parameters
 
 The `sqlserver` driver uses normal MS SQL Server syntax and expects parameters in
 the sql query to be in the form of either `@Name` or `@p1` to `@pN` (ordinal position).
@@ -125,6 +208,22 @@ the sql query to be in the form of either `@Name` or `@p1` to `@pN` (ordinal pos
 ```go
 db.QueryContext(ctx, `select * from t where ID = @ID and Name = @p2;`, sql.Named("ID", 6), "Bob")
 ```
+
+### Parameter Types
+
+To pass specific types to the query parameters, say `varchar` or `date` types,
+you must convert the types to the type before passing in. The following types
+are supported:
+
+ * string -> nvarchar
+ * mssql.VarChar -> varchar
+ * time.Time -> datetimeoffset or datetime (TDS version dependent)
+ * mssql.DateTime1 -> datetime
+ * mssql.DateTimeOffset -> datetimeoffset
+ * "github.com/golang-sql/civil".Date -> date
+ * "github.com/golang-sql/civil".DateTime -> datetime2
+ * "github.com/golang-sql/civil".Time -> time
+ * mssql.TVP -> Table Value Parameter (TDS version dependent)
 
 ## Important Notes
 

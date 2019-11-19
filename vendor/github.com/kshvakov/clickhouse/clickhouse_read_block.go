@@ -1,7 +1,7 @@
 package clickhouse
 
 import (
-	"github.com/kshvakov/clickhouse/lib/data"
+	"github.com/ClickHouse/clickhouse-go/lib/data"
 )
 
 func (ch *clickhouse) readBlock() (*data.Block, error) {
@@ -9,12 +9,11 @@ func (ch *clickhouse) readBlock() (*data.Block, error) {
 		return nil, err
 	}
 
-	if ch.compress {
-
-	}
+	ch.decoder.SelectCompress(ch.compress)
 	var block data.Block
 	if err := block.Read(&ch.ServerInfo, ch.decoder); err != nil {
 		return nil, err
 	}
+	ch.decoder.SelectCompress(false)
 	return &block, nil
 }

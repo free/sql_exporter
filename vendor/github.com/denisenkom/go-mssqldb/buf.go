@@ -101,11 +101,10 @@ func (w *tdsBuffer) Write(p []byte) (total int, err error) {
 		}
 		p = p[copied:]
 	}
-	return
 }
 
 func (w *tdsBuffer) WriteByte(b byte) error {
-	if int(w.wpos) == len(w.wbuf) {
+	if int(w.wpos) == len(w.wbuf) || w.wpos == w.packetSize {
 		if err := w.flush(); err != nil {
 			return err
 		}
@@ -144,7 +143,7 @@ func (r *tdsBuffer) readNextPacket() error {
 	if err != nil {
 		return err
 	}
-	if int(h.Size) > len(r.rbuf) {
+	if int(h.Size) > r.packetSize {
 		return errors.New("Invalid packet size, it is longer than buffer size")
 	}
 	if headerSize > int(h.Size) {
@@ -222,23 +221,27 @@ func (r *tdsBuffer) uint16() uint16 {
 }
 
 func (r *tdsBuffer) BVarChar() string {
-	l := int(r.byte())
-	return r.readUcs2(l)
+	return readBVarCharOrPanic(r)
 }
 
-func (r *tdsBuffer) UsVarChar() string {
-	l := int(r.uint16())
-	return r.readUcs2(l)
-}
-
-func (r *tdsBuffer) readUcs2(numchars int) string {
-	b := make([]byte, numchars*2)
-	r.ReadFull(b)
-	res, err := ucs22str(b)
+func readBVarCharOrPanic(r io.Reader) string {
+	s, err := readBVarChar(r)
 	if err != nil {
 		badStreamPanic(err)
 	}
-	return res
+	return s
+}
+
+func readUsVarCharOrPanic(r io.Reader) string {
+	s, err := readUsVarChar(r)
+	if err != nil {
+		badStreamPanic(err)
+	}
+	return s
+}
+
+func (r *tdsBuffer) UsVarChar() string {
+	return readUsVarCharOrPanic(r)
 }
 
 func (r *tdsBuffer) Read(buf []byte) (copied int, err error) {

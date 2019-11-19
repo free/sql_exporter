@@ -1,30 +1,34 @@
-# ClickHouse [![Build Status](https://travis-ci.org/kshvakov/clickhouse.svg?branch=master)](https://travis-ci.org/kshvakov/clickhouse) [![Go Report Card](https://goreportcard.com/badge/github.com/kshvakov/clickhouse)](https://goreportcard.com/report/github.com/kshvakov/clickhouse) [![codecov](https://codecov.io/gh/kshvakov/clickhouse/branch/master/graph/badge.svg)](https://codecov.io/gh/kshvakov/clickhouse)
+# ClickHouse [![Build Status](https://travis-ci.org/kshvakov/clickhouse.svg?branch=master)](https://travis-ci.org/kshvakov/clickhouse) [![Go Report Card](https://goreportcard.com/badge/github.com/ClickHouse/clickhouse-go)](https://goreportcard.com/report/github.com/ClickHouse/clickhouse-go) [![codecov](https://codecov.io/gh/kshvakov/clickhouse/branch/master/graph/badge.svg)](https://codecov.io/gh/kshvakov/clickhouse)
 
-Golang SQL database driver for [Yandex ClickHouse](https://clickhouse.yandex/) 
+Golang SQL database driver for [Yandex ClickHouse](https://clickhouse.yandex/)
 
 ## Key features
 
 * Uses native ClickHouse tcp client-server protocol
 * Compatibility with `database/sql`
 * Round Robin load-balancing
+* Bulk write support :  `begin->prepare->(in loop exec)->commit`
+* LZ4 compression support (default to use pure go lz4, switch to use cgo lz4 by turn clz4 build tags on)
 
-## DSN 
+## DSN
 
 * username/password - auth credentials
 * database - select the current default database
-* read_timeout/write_timeout - timeout in second 
+* read_timeout/write_timeout - timeout in second
 * no_delay   - disable/enable the Nagle Algorithm for tcp socket (default is 'true' - disable)
 * alt_hosts  - comma separated list of single address host for load-balancing
-* connection_open_strategy - random/in_order (default random). 
-    * random   - choose random server from set 
+* connection_open_strategy - random/in_order (default random).
+    * random   - choose random server from set
     * in_order - first live server is choosen in specified order
 * block_size - maximum rows in block (default is 1000000). If the rows are larger then the data will be split into several blocks to send them to the server
+* pool size - maximum amount of preallocated byte chunks used in queries (default is 100). Decrease this if you experience memory problems at the expense of more GC pressure and vice versa.
 * debug - enable debug output (boolean value)
 
 SSL/TLS parameters:
 
 * secure - establish secure connection (default is false)
-* skip_verify - skip certificate verification (default is true)
+* skip_verify - skip certificate verification (default is false)
+* tls_config - name of a TLS config with client certificates, registered using `clickhouse.RegisterTLSConfig()`; implies secure to be true, unless explicitly specified
 
 example:
 ```
@@ -37,24 +41,26 @@ tcp://host1:9000?username=user&password=qwerty&database=clicks&read_timeout=10&w
 * Float32, Float64
 * String
 * FixedString(N)
-* Date 
+* Date
 * DateTime
+* IPv4
+* IPv6
 * Enum
 * UUID
 * Nullable(T)
-* [Array(T) (one-dimensional)](https://clickhouse.yandex/reference_en.html#Array(T)) [godoc](https://godoc.org/github.com/kshvakov/clickhouse#Array)
+* [Array(T) (one-dimensional)](https://clickhouse.yandex/reference_en.html#Array(T)) [godoc](https://godoc.org/github.com/ClickHouse/clickhouse-go#Array)
 
 ## TODO
 
-* Compression 
+* Support other compression methods(zstd ...)
 
 ## Install
 ```
-go get -u github.com/kshvakov/clickhouse
+go get -u github.com/ClickHouse/clickhouse-go
 ```
 
 ## Example
-```go 
+```go
 package main
 
 import (
@@ -63,7 +69,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/kshvakov/clickhouse"
+	"github.com/ClickHouse/clickhouse-go"
 )
 
 func main() {
@@ -136,6 +142,10 @@ func main() {
 		log.Printf("country: %s, os: %d, browser: %d, categories: %v, action_day: %s, action_time: %s", country, os, browser, categories, actionDay, actionTime)
 	}
 
+	if err := rows.Err(); err != nil {
+		log.Fatal(err)
+	}
+
 	if _, err := connect.Exec("DROP TABLE example"); err != nil {
 		log.Fatal(err)
 	}
@@ -152,7 +162,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	_ "github.com/kshvakov/clickhouse"
+	_ "github.com/ClickHouse/clickhouse-go"
 )
 
 func main() {
