@@ -69,6 +69,12 @@
 			"revisionTime": "2019-11-14T17:47:13Z"
 		},
 		{
+			"checksumSHA1": "yV03NbQdXQW5nBxZ48zkFrWJZfU=",
+			"path": "github.com/clickhouse/clickhouse-go",
+			"revision": "6b1ba590788873fd6993f50f823bb90274a23ba5",
+			"revisionTime": "2019-11-11T18:17:50Z"
+		},
+		{
 			"checksumSHA1": "pQdQAyva/nOnQXh4sQLui5rvsbQ=",
 			"path": "github.com/cloudflare/golz4",
 			"revision": "ef862a3cdc58a6f1fee4e3af3d44fbe279194cde",
@@ -121,12 +127,6 @@
 			"path": "github.com/golang/protobuf/proto",
 			"revision": "ed6926b37a637426117ccab59282c3839528a700",
 			"revisionTime": "2019-10-22T19:55:53Z"
-		},
-		{
-			"checksumSHA1": "rPt5ocm3dynEC0XJLF00s+XNQjs=",
-			"path": "github.com/kshvakov/clickhouse",
-			"revision": "6b1ba590788873fd6993f50f823bb90274a23ba5",
-			"revisionTime": "2019-11-11T18:17:50Z"
 		},
 		{
 			"checksumSHA1": "GKTFbGomCP1fhH7mFecvwKvh7bc=",
