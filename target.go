@@ -64,7 +64,7 @@ func NewTarget(
 			Value: proto.String(v),
 		})
 	}
-	sort.Sort(prometheus.LabelPairSorter(constLabelPairs))
+	sort.Sort(labelPairSorter(constLabelPairs))
 
 	collectors := make([]Collector, 0, len(ccs))
 	for _, cc := range ccs {
