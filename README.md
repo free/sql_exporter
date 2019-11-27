@@ -114,6 +114,7 @@ metrics:
     key_labels:
       # Populated from the `market` column of each row.
       - Market
+    #json_labels: labels	# Optional column, with additional JSON formated labels, ie. { "label1": "value1", ... }
     values: [LastUpdateTime]
     query: |
       SELECT Market, max(UpdateTime) AS LastUpdateTime

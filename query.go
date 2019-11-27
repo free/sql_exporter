@@ -47,6 +47,11 @@ func NewQuery(logContext string, qc *config.QueryConfig, metricFamilies ...*Metr
 				return nil, err
 			}
 		}
+		if mf.config.JsonLabels != "" {
+			if err := setColumnType(logContext, mf.config.JsonLabels, columnTypeKey, columnTypes); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	q := Query{
