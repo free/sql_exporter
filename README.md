@@ -114,6 +114,9 @@ metrics:
     key_labels:
       # Populated from the `market` column of each row.
       - Market
+    static_labels:
+      # Arbitrary key/value pair
+      portfolio: income
     values: [LastUpdateTime]
     query: |
       SELECT Market, max(UpdateTime) AS LastUpdateTime
