@@ -50,13 +50,13 @@ func NewMetricFamily(logContext string, mc *config.MetricConfig, constLabels []*
 		labels = append(labels, mc.ValueLabel)
 	}
 
-	// Create a copy of original slice to apply sort properly
+	// Create a copy of original slice to avoid modifying constLabels
 	sortedLabels := append(constLabels[:0:0], constLabels...)
 
-	for _, label := range mc.StaticLabels {
+	for k, v := range mc.StaticLabels {
 		sortedLabels = append(sortedLabels, &dto.LabelPair{
-			Name:  proto.String(label.Name),
-			Value: proto.String(label.Value),
+			Name:  proto.String(k),
+			Value: proto.String(v),
 		})
 	}
 	sort.Sort(labelPairSorter(sortedLabels))

@@ -363,23 +363,18 @@ func (c *CollectorConfig) UnmarshalYAML(unmarshal func(interface{}) error) error
 	return checkOverflow(c.XXX, "collector")
 }
 
-type StaticLabels struct {
-	Name  string `yaml:"name"`
-	Value string `yaml:"value"`
-}
-
 // MetricConfig defines a Prometheus metric, the SQL query to populate it and the mapping of columns to metric
 // keys/values.
 type MetricConfig struct {
-	Name         string         `yaml:"metric_name"`             // the Prometheus metric name
-	TypeString   string         `yaml:"type"`                    // the Prometheus metric type
-	Help         string         `yaml:"help"`                    // the Prometheus metric help text
-	KeyLabels    []string       `yaml:"key_labels,omitempty"`    // expose these columns as labels from SQL
-	StaticLabels []StaticLabels `yaml:"static_labels,omitempty"` // expose these columns as static labels
-	ValueLabel   string         `yaml:"value_label,omitempty"`   // with multiple value columns, map their names under this label
-	Values       []string       `yaml:"values"`                  // expose each of these columns as a value, keyed by column name
-	QueryLiteral string         `yaml:"query,omitempty"`         // a literal query
-	QueryRef     string         `yaml:"query_ref,omitempty"`     // references a query in the query map
+	Name         string            `yaml:"metric_name"`             // the Prometheus metric name
+	TypeString   string            `yaml:"type"`                    // the Prometheus metric type
+	Help         string            `yaml:"help"`                    // the Prometheus metric help text
+	KeyLabels    []string          `yaml:"key_labels,omitempty"`    // expose these columns as labels from SQL
+	StaticLabels map[string]string `yaml:"static_labels,omitempty"` // fixed key/value pairs as static labels
+	ValueLabel   string            `yaml:"value_label,omitempty"`   // with multiple value columns, map their names under this label
+	Values       []string          `yaml:"values"`                  // expose each of these columns as a value, keyed by column name
+	QueryLiteral string            `yaml:"query,omitempty"`         // a literal query
+	QueryRef     string            `yaml:"query_ref,omitempty"`     // references a query in the query map
 
 	valueType prometheus.ValueType // TypeString converted to prometheus.ValueType
 	query     *QueryConfig         // QueryConfig resolved from QueryRef or generated from Query
