@@ -13,6 +13,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
 	_ "net/http/pprof"
+	_ "github.com/kardianos/minwinsvc"
 )
 
 var (
@@ -76,3 +77,10 @@ type LogFunc func(args ...interface{})
 func (log LogFunc) Println(args ...interface{}) {
 	log(args)
 }
+
+// exit handler when running as a windows service
+minwinsvc.SetOnExit(func() {
+	// Do something.
+	// Within 10 seconds call:
+	os.Exit(0)
+})
