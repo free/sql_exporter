@@ -9,8 +9,10 @@ import (
 	_ "github.com/ClickHouse/clickhouse-go" // register the ClickHouse driver
 	_ "github.com/denisenkom/go-mssqldb"    // register the MS-SQL driver
 	_ "github.com/go-sql-driver/mysql"      // register the MySQL driver
+	_ "github.com/lib/pq"                   // register the PostgreSQL driver
+	_ "github.com/snowflakedb/gosnowflake"  // register the Snowflake driver
+
 	log "github.com/golang/glog"
-	_ "github.com/lib/pq" // register the PostgreSQL driver
 )
 
 // OpenConnection extracts the driver name from the DSN (expected as the URI scheme), adjusts it where necessary (e.g.
@@ -43,6 +45,12 @@ import (
 // Using the https://github.com/kshvakov/clickhouse driver, DSN format (passed to the driver with the`clickhouse://`
 // prefix replaced with `tcp://`):
 //   clickhouse://host:port?username=username&password=password&database=dbname&param=value
+//
+// Snowflake
+//
+// Using the https://godoc.org/github.com/snowflakedb/gosnowflake driver, DSN format (passed to the driver stripped
+// of the `snowflake://`` prefix):
+//   snowflake://username:password@account/dbname?role=rolename&warehouse=warehousename&param=value
 func OpenConnection(ctx context.Context, logContext, dsn string, maxConns, maxIdleConns int) (*sql.DB, error) {
 	// Extract driver name from DSN.
 	idx := strings.Index(dsn, "://")
@@ -57,6 +65,8 @@ func OpenConnection(ctx context.Context, logContext, dsn string, maxConns, maxId
 		dsn = strings.TrimPrefix(dsn, "mysql://")
 	case "clickhouse":
 		dsn = "tcp://" + strings.TrimPrefix(dsn, "clickhouse://")
+	case "snowflake":
+		dsn = strings.TrimPrefix(dsn, "snowflake://")
 	}
 
 	// Open the DB handle in a separate goroutine so we can terminate early if the context closes.
