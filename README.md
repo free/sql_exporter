@@ -5,7 +5,7 @@ Database agnostic SQL exporter for [Prometheus](https://prometheus.io).
 ## Overview
 
 SQL Exporter is a configuration driven exporter that exposes metrics gathered from DBMSs, for use by the Prometheus
-monitoring system. Out of the box, it provides support for MySQL, PostgreSQL, Microsoft SQL Server and Clickhouse, but
+monitoring system. Out of the box, it provides support for MySQL, PostgreSQL, Microsoft SQL Server, Clickhouse and Vertica, but
 any DBMS for which a Go driver is available may be monitored after rebuilding the binary with the DBMS driver included.
 
 The collected metrics and the queries that produce them are entirely configuration defined. SQL queries are grouped into
@@ -131,8 +131,8 @@ To keep things simple and yet allow fully configurable database connections to b
 Go `sql` library does not allow for automatic driver selection based on the DSN (i.e. an explicit driver name must be
 specified) SQL Exporter uses the schema part of the DSN (the part before the `://`) to determine which driver to use.
 
-Unfortunately, while this works out of the box with the [MS SQL Server](https://github.com/denisenkom/go-mssqldb) and
-[PostgreSQL](github.com/lib/pq) drivers, the [MySQL driver](github.com/go-sql-driver/mysql) DSNs format does not include
+Unfortunately, while this works out of the box with the [MS SQL Server](https://github.com/denisenkom/go-mssqldb),
+[PostgreSQL](github.com/lib/pq) and [Vertica](github.com/vertica/vertica-sql-go) drivers, the [MySQL driver](github.com/go-sql-driver/mysql) DSNs format does not include
 a schema and the [Clickhouse](github.com/kshvakov/clickhouse) one uses `tcp://`. So SQL Exporter does a bit of massaging
 of DSNs for the latter two drivers in order for this to work:
 
@@ -141,6 +141,7 @@ DB | SQL Exporter expected DSN | Driver sees
 MySQL | `mysql://user:passw@protocol(host:port)/dbname` | `user:passw@protocol(host:port)/dbname`
 PostgreSQL | `postgres://user:passw@host:port/dbname` | *unchanged*
 SQL Server | `sqlserver://user:passw@host:port/instance` | *unchanged*
+Vertica | `vertica://user:passw@host:port/dbname` | *unchanged*
 Clickhouse | `clickhouse://host:port?username=user&password=passw&database=dbname` | `tcp://host:port?username=user&password=passw&database=dbname`
 
 ## Why It Exists
