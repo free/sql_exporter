@@ -219,6 +219,12 @@
 			"revisionTime": "2019-11-14T08:59:18Z"
 		},
 		{
+			"checksumSHA1": "UT39wTV1Wdmhnv2kbGEiz53uRF8=",
+			"path": "github.com/vertica/vertica-sql-go",
+			"revision": "e3abe879e920984fe910ae9b884d1c064ee19f6f",
+			"revisionTime": "2020-05-02T01:25:01Z"
+		},
+		{
 			"checksumSHA1": "UDvj5huw3BaGehfVRCB1UGQAtP4=",
 			"path": "golang.org/x/crypto/md4",
 			"revision": "497ca9f6d64f9bb73048a960b4098309edcd2205",
