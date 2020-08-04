@@ -1,0 +1,86 @@
+replicaCount: 1
+
+image:
+  repository: githubfree/sql_exporter
+  tag: 0.5
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: {}
+nameOverride: ""
+fullnameOverride: ""
+
+podSecurityContext: {}
+
+securityContext: {}
+
+## Containers' liveness and readiness probes
+## ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-probes
+##
+livenessProbe:
+  tcpSocket:
+    port: http
+  initialDelaySeconds: 30
+  timeoutSeconds: 5
+  failureThreshold: 6
+readinessProbe:
+  tcpSocket:
+    port: http
+  initialDelaySeconds: 5
+  timeoutSeconds: 3
+  periodSeconds: 5
+
+deployment:
+  port: 9399
+
+service:
+  type: ClusterIP
+  port: 9399
+
+resources:
+  limits: {}
+    # cpu: 50m
+    # memory: 64Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+database:
+  protocol: "mysql"
+  user: ""
+  password: ""
+  host: ""
+  port: ""
+  database: ""
+  metrics: []
+    # - metric_name: mariadb_database_locks
+    #   type: gauge
+    #   help: 'Shows the locks of a database'
+    #   values: [LOCKS]
+    #   query: SELECT COUNT(1) AS LOCKS FROM INFORMATION_SCHEMA.PROCESSLIST WHERE Info IS NOT NULL AND State LIKE 'Waiting for table level lock' AND TIME > 60
+
+# Enable this if you're using https://github.com/coreos/prometheus-operator
+serviceMonitor:
+  enabled: false
+  ## The Path of where the metrics are exposed
+  path: /metrics
+  ## Specify a namespace if needed
+  namespace: monitoring
+  # fallback to the prometheus default unless specified
+  # interval: 10s
+  # scrapeTimeout: 10s
+  selector: {}
+    # namespace: "monitoring"
+  alerts:
+    enabled: false
+    rules: []
+      # - alert: DatabaseLocks
+      #   annotations:
+      #     summary: Mysql/MariaDB Database Locks
+      #   expr: mariadb_database_locks >
+      #     0
+      #   for: 1m
+      #   labels: {}
+

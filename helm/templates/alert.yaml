@@ -1,0 +1,25 @@
+{{- if .Values.serviceMonitor.enabled }}
+{{- if .Values.serviceMonitor.alerts.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ template "sql-exporter.fullname" . }}
+  {{- if .Values.serviceMonitor.namespace }}
+  namespace: {{ .Values.serviceMonitor.namespace }}
+  {{- else }}
+  namespace: {{ .Release.Namespace }}
+  {{- end }}
+  labels:
+    app: {{ include "sql-exporter.fullname" . }}
+    chart: {{ template "sql-exporter.chart" . }}
+    release: {{ .Release.Name | quote }}
+    heritage: {{ .Release.Service | quote }}  
+    {{- range $key, $value := .Values.serviceMonitor.selector }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+spec:
+  groups:
+  - name: {{ include "sql-exporter.fullname" . }}
+    rules: {{- toYaml .Values.serviceMonitor.alerts.rules | nindent 6 }}
+{{- end }}
+{{- end }}
