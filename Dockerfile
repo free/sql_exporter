@@ -1,4 +1,4 @@
-FROM quay.io/prometheus/golang-builder AS builder
+FROM golang:1.12 AS builder
 
 # Get sql_exporter
 ADD .   /go/src/github.com/free/sql_exporter
