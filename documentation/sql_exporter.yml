@@ -54,7 +54,7 @@ collectors:
     #  * one or more value columns:
     #     * if exactly one value column, the column name name is ignored and its value becomes the metric value
     #     * with multiple value columns, a `value_label` must be defined; the column name will populate this label and
-    #       the column value will popilate the metric value.
+    #       the column value will populate the metric value.
     metrics:
       # The metric name, type and help text, as exported to /metrics.
       - metric_name: mssql_log_growths
