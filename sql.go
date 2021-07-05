@@ -6,9 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	_ "github.com/ClickHouse/clickhouse-go" // register the ClickHouse driver
-	_ "github.com/denisenkom/go-mssqldb"    // register the MS-SQL driver
-	_ "github.com/go-sql-driver/mysql"      // register the MySQL driver
+	_ "github.com/denisenkom/go-mssqldb" // register the MS-SQL driver
+	_ "github.com/go-sql-driver/mysql"   // register the MySQL driver
 	log "github.com/golang/glog"
 	_ "github.com/lib/pq" // register the PostgreSQL driver
 )
