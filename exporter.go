@@ -7,9 +7,9 @@ import (
 	"sync"
 
 	"github.com/free/sql_exporter/config"
-	"github.com/golang/protobuf/proto"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
+	"google.golang.org/protobuf/proto"
 )
 
 var dsnOverride = flag.String("config.data-source-name", "", "Data source name to override the value in the configuration file with.")
