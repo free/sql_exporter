@@ -7,12 +7,17 @@ import (
 	"os"
 	"runtime"
 
+	_ "net/http/pprof"
+
 	"github.com/free/sql_exporter"
 	log "github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
-	_ "net/http/pprof"
+
+	//"github.com/prometheus/common/log"
+	"github.com/prometheus/common/promlog"
+	"github.com/prometheus/exporter-toolkit/web"
 )
 
 var (
@@ -20,6 +25,7 @@ var (
 	listenAddress = flag.String("web.listen-address", ":9399", "Address to listen on for web interface and telemetry.")
 	metricsPath   = flag.String("web.metrics-path", "/metrics", "Path under which to expose metrics.")
 	configFile    = flag.String("config.file", "sql_exporter.yml", "SQL Exporter configuration file name.")
+	webcfgFile    = flag.String("web.config", "", "Path to config yaml file that can enable TLS or authentication.")
 )
 
 func init() {
@@ -64,8 +70,16 @@ func main() {
 	// Expose exporter metrics separately, for debugging purposes.
 	http.Handle("/sql_exporter_metrics", promhttp.Handler())
 
-	log.Infof("Listening on %s", *listenAddress)
-	log.Fatal(http.ListenAndServe(*listenAddress, nil))
+	promlogConfig := &promlog.Config{}
+	logger := promlog.New(promlogConfig)
+	log.Infoln("Listening on", *listenAddress)
+	server := &http.Server{Addr: *listenAddress}
+	if err := web.Listen(server, *webcfgFile, logger); err != nil {
+		log.Fatal(err)
+	}
+
+	//log.Infof("Listening on %s", *listenAddress)
+	//log.Fatal(http.ListenAndServe(*listenAddress, nil))
 }
 
 // LogFunc is an adapter to allow the use of any function as a promhttp.Logger. If f is a function, LogFunc(f) is a

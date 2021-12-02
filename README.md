@@ -155,3 +155,10 @@ Prometheus scrapes. This is partly a philosophical issue, but practical issues a
 jitter; duplicate data points; or collected but not scraped data points. The control they provide over which labels get
 applied is limited, and the base label set spammy. And finally, configurations are not easily reused without
 copy-pasting and editing across jobs and instances.
+
+## TLS and basic authentication
+
+SQL Exporter supports TLS and basic authentication. This enables better control of the various HTTP endpoints.
+
+To use TLS and/or basic authentication, you need to pass a configuration file using the `--web.config.file` parameter. The format of the file is described
+[in the exporter-toolkit repository](https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md).
