@@ -22,7 +22,7 @@ DOCKER_IMAGE_NAME   ?= sql-exporter
 DOCKER_IMAGE_TAG    ?= $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
 
 
-all: format build test
+all: promu build test
 
 style:
 	@echo ">> checking code style"
@@ -55,7 +55,7 @@ docker:
 promu:
 	@GOOS=$(shell uname -s | tr A-Z a-z) \
 		GOARCH=$(subst x86_64,amd64,$(patsubst i%86,386,$(shell uname -m))) \
-		$(GO) get -u github.com/prometheus/promu
+		$(GO) install github.com/prometheus/promu@v0.13.0
 
 
 .PHONY: all style format build test vet tarball docker promu
